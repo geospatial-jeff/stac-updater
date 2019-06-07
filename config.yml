@@ -6,6 +6,8 @@ service:
 
 static_catalog:
   root_url: https://my.cat.root.url
+  item_path: ${landsat:path}/${landsat:row}
+  item_name: ${date}/{id}
 
 dynamic_catalog:
   type: sat-api
