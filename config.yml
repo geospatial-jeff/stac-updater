@@ -1,0 +1,11 @@
+service:
+  name: stac-updater
+  stage: prod
+  region: us-east-1
+
+
+static_catalog:
+  root_url: https://my.cat.root.url
+
+dynamic_catalog:
+  type: sat-api
