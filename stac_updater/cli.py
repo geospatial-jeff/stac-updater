@@ -25,7 +25,9 @@ def build_project():
                 'runtime': 'python3.7',
                 'stage': user_config['service']['stage'],
                 'region': user_config['service']['region'],
-                'environment': {}
+                'environment': {
+                    'REGION': user_config['service']['region']
+                }
             },
             'resources': {
                 'Resources': {
