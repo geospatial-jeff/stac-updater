@@ -42,7 +42,6 @@ def build_project():
         # Generate AWS resources to update static STAC catalog
         if 'static_catalog' in user_keys:
             sls_config['provider']['environment'].update({
-                'CAT_ROOT_URL': user_config['static_catalog']['root_url'],
                 'ITEM_PATH': user_config['static_catalog']['item_path'],
                 'ITEM_NAME': user_config['static_catalog']['item_name']
             })
