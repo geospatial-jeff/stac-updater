@@ -29,6 +29,11 @@ def build_project():
                     'REGION': user_config['service']['region']
                 }
             },
+            'functions': {
+                "kickoff": {
+                    "handler": "handler.kickoff"
+                },
+            },
             'resources': {
                 'Resources': {
                     'NewSTACItemTopic': resources.sns_topic(names.sns_topic)
@@ -59,6 +64,11 @@ def build_project():
                 names.static_queue: sqs_queue,
                 names.static_sns_sub: sns_subscription,
                 names.static_sqs_policy: sqs_policy
+            })
+
+            # Create lambda function and attach to sls config
+            sls_config['functions'].update({
+                names.static_lambda_updater: resources.lambda_sqs_trigger(names.static_lambda_updater, names.static_queue)
             })
 
         # Save to serverless.yml file
