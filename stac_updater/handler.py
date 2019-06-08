@@ -25,7 +25,7 @@ def kickoff(event, context):
         message=stac_item
     )
 
-def static_stac_updater(event, context):
+def staticStacUpdater(event, context):
 
     for record in event['Records']:
         stac_item = record['body']
