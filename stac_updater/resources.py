@@ -81,3 +81,19 @@ def sns_topic(topic_name):
         }
     }
     return resource
+
+def lambda_sqs_trigger(func_name, queue_name):
+    func = {
+        "handler": f"handler.{func_name}",
+        "events": [
+            {
+                "sqs": {
+                    "arn": "arn:aws:sqs:#{}:#{}:{}".format("{AWS::Region}",
+                                                        "{AWS::AccountId}",
+                                                        queue_name),
+                }
+            }
+        ]
+    }
+
+    return func
