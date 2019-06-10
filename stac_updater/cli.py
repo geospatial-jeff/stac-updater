@@ -1,4 +1,5 @@
 import os
+import subprocess
 
 import click
 import yaml
@@ -67,5 +68,11 @@ def build_project():
         with open('serverless.yml', 'w') as outfile:
             yaml.dump(sls_config, outfile, indent=1)
 
+@stac_updater.command(name='deploy-project')
+def deploy_project():
+    # Build docker image
+    subprocess.call("docker build . -t stac_updater:latest", shell=True)
+    subprocess.call("docker run --rm -v $PWD:/home/stac_updater -it stac_updater:latest package-service.sh", shell=True)
+    subprocess.call("sls deploy -v", shell=True)
 
 
