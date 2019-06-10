@@ -27,5 +27,4 @@ cp stac_updater $DEPLOY_DIR -r
 
 # zip up deploy package
 cd $DEPLOY_DIR
-ls
 zip -ruq ../lambda-deploy.zip ./
