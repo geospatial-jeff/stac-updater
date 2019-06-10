@@ -39,7 +39,10 @@ def build_project():
             },
             'plugins': [
                 'serverless-pseudo-parameters'
-            ]
+            ],
+            'package': {
+                'artifact': 'lambda-deploy.zip'
+            }
         }
 
         # Generate AWS resources to update static STAC catalog
