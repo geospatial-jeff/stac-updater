@@ -3,7 +3,6 @@ import os
 import click
 import yaml
 
-# from stac_updater import resources, names
 from stac_updater import resources
 
 
