@@ -13,8 +13,8 @@ lambda_client = boto3.client('lambda')
 ACCOUNT_ID = boto3.client('sts').get_caller_identity()['Account']
 REGION = os.getenv('REGION')
 CAT_ROOT = os.getenv('CAT_ROOT_URL')
-ITEM_PATH = os.getenv('ITEM_PATH')
-ITEM_NAME = os.getenv('ITEM_NAME')
+ITEM_PATH = '/'.join(['${' + x + '}' for x in os.getenv('ITEM_PATH').split('/')])
+ITEM_NAME = '/'.join(['${' + x + '}' for x in os.getenv('ITEM_NAME').split('/')])
 DYNAMIC_INGEST_ARN = os.getenv('INGEST_ARN')
 
 

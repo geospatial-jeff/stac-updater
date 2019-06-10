@@ -5,8 +5,10 @@ service:
 
 
 static_catalog:
-  item_path: ${landsat:path}/${landsat:row}
-  item_name: ${date}/{id}
+  item_path: landsat:path/landsat:row
+  item_name: date/id
 
-dynamic_catalog:
-  ingest_arn: my:arn:here
+
+#
+#dynamic_catalog:
+#  ingest_arn: my:arn:here
