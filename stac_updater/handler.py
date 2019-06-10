@@ -8,12 +8,14 @@ import boto3
 from stac_updater import names
 
 sns_client = boto3.client('sns')
+lambda_client = boto3.client('lambda')
 
 ACCOUNT_ID = boto3.client('sts').get_caller_identity()['Account']
 REGION = os.getenv('REGION')
 CAT_ROOT = os.getenv('CAT_ROOT_URL')
 ITEM_PATH = os.getenv('ITEM_PATH')
 ITEM_NAME = os.getenv('ITEM_NAME')
+DYNAMIC_INGEST_ARN = os.getenv('INGEST_ARN')
 
 
 def kickoff(event, context):
@@ -26,6 +28,13 @@ def kickoff(event, context):
     )
 
 def staticStacUpdater(event, context):
+
+    """
+    Lambda function to update static catalogs by reading the collection path from the item's links.  Assumes that the
+    STAC item is a part of a collection and that collection already exists within the catalog.
+
+    Uses the `path` and `filename` parameters in sat_stac.Collection.add_item to build out catalog.
+    """
 
     for record in event['Records']:
         stac_item = record['body']
@@ -52,3 +61,19 @@ def staticStacUpdater(event, context):
             kwargs.update({'filename': ITEM_NAME})
         col.add_item(**kwargs)
         col.save()
+
+def dynamicStacUpdater(event, context):
+
+    """
+    Lambda function to update dynamic catalogs by passing each STAC Item in the queue to the ingest handler used by
+    the dynamic catalog.
+    """
+
+    for record in event['Records']:
+        stac_item = record['body']
+
+        lambda_client.invoke(
+            FunctionName=DYNAMIC_INGEST_ARN,
+            InvocationType='Event',
+            Payload=json.dumps(stac_item)
+        )
