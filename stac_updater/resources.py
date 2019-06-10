@@ -1,3 +1,5 @@
+from stac_updater import names
+
 
 def subscribe_sqs_to_sns(queue_name, topic_name):
 
@@ -73,14 +75,14 @@ def sqs_queue(queue_name, dlq_name=None, maxRetry=3):
 
     return resource
 
-def sns_topic(topic_name):
+def sns_topic():
     resource = {
         "Type": "AWS::SNS::Topic",
         "Properties": {
-            "TopicName": topic_name
+            "TopicName": names.sns_topic
         }
     }
-    return resource
+    return {names.sns_topic: resource}
 
 def lambda_sqs_trigger(func_name, queue_name):
     func = {
@@ -97,3 +99,31 @@ def lambda_sqs_trigger(func_name, queue_name):
     }
 
     return func
+
+
+def setup_resources(cat_type):
+    dlq_name = getattr(names, f"{cat_type}_dlq")
+    queue_name = getattr(names, f"{cat_type}_queue")
+    sns_sub_name = getattr(names, f"{cat_type}_sns_sub")
+    sqs_policy_name = getattr(names, f"{cat_type}_sqs_policy")
+    lambda_name = getattr(names, f"{cat_type}_lambda_updater")
+
+    dlq = sqs_queue(dlq_name)
+    queue = sqs_queue(queue_name, dlq_name=dlq_name, maxRetry=3)
+    sns_subscription, sqs_policy = subscribe_sqs_to_sns(queue_name, names.sns_topic)
+    lambda_updater = lambda_sqs_trigger(lambda_name, queue_name)
+
+    return {
+        'resources': {
+            dlq_name: dlq,
+            queue_name: queue,
+            sns_sub_name: sns_subscription,
+            sqs_policy_name: sqs_policy
+        },
+        'functions': {
+            lambda_name: lambda_updater
+        }
+    }
+
+
+
