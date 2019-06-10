@@ -3,7 +3,8 @@ import os
 import click
 import yaml
 
-from stac_updater import resources, names
+# from stac_updater import resources, names
+from stac_updater import resources
 
 
 @click.group()
@@ -35,9 +36,7 @@ def build_project():
                 },
             },
             'resources': {
-                'Resources': {
-                    'NewSTACItemTopic': resources.sns_topic(names.sns_topic)
-                }
+                'Resources': resources.sns_topic()
             },
             'plugins': [
                 'serverless-pseudo-parameters'
@@ -51,25 +50,16 @@ def build_project():
                 'ITEM_NAME': user_config['static_catalog']['item_name']
             })
 
-            # Create DLQ
-            dlq = resources.sqs_queue(names.static_dlq)
+            aws_resources = resources.setup_resources('static')
+            sls_config['resources']['Resources'].update(aws_resources['resources'])
+            sls_config['functions'].update(aws_resources['functions'])
 
-            # Create SQS queue and subscribe to NewSTACItemTopic
-            sqs_queue = resources.sqs_queue(names.static_queue, dlq_name=names.static_dlq, maxRetry=1)
-            sns_subscription, sqs_policy = resources.subscribe_sqs_to_sns(names.static_queue, names.sns_topic)
+        if 'dynamic_catalog' in user_keys:
+            sls_config['provider']['environment'].update({'INGEST_ARN': user_config['dynamic_catalog']['ingest_arn']})
 
-            # Add resources to sls config
-            sls_config['resources']['Resources'].update({
-                names.static_dlq: dlq,
-                names.static_queue: sqs_queue,
-                names.static_sns_sub: sns_subscription,
-                names.static_sqs_policy: sqs_policy
-            })
-
-            # Create lambda function and attach to sls config
-            sls_config['functions'].update({
-                names.static_lambda_updater: resources.lambda_sqs_trigger(names.static_lambda_updater, names.static_queue)
-            })
+            aws_resources = resources.setup_resources('dynamic')
+            sls_config['resources']['Resources'].update(aws_resources['resources'])
+            sls_config['functions'].update(aws_resources['functions'])
 
         # Save to serverless.yml file
         with open('serverless.yml', 'w') as outfile:
