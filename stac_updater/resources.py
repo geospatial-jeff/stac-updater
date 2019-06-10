@@ -86,7 +86,7 @@ def sns_topic():
 
 def lambda_sqs_trigger(func_name, queue_name):
     func = {
-        "handler": f"handler.{func_name}",
+        "handler": f"stac_updater.handler.{func_name}",
         "events": [
             {
                 "sqs": {
