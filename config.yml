@@ -9,4 +9,4 @@ static_catalog:
   item_name: ${date}/{id}
 
 dynamic_catalog:
-  type: sat-api
+  ingest_arn: my:arn:here
