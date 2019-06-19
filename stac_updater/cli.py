@@ -15,15 +15,15 @@ sls_config_path = os.path.join(os.path.dirname(__file__), '..', 'serverless.yml'
 def stac_updater():
     pass
 
-@stac_updater.command(name='new-service')
+@stac_updater.command(name='new-service', short_help="build a new service")
 def new_service():
     shutil.copyfile(sls_template_path, sls_config_path)
 
-@stac_updater.command(name='update-collection')
-@click.option('--name', '-n', type=str, required=True)
-@click.option('--root', '-r', type=str, required=True)
-@click.option('--long-poll/--short-poll', default=False)
-@click.option('--concurrency', type=int, default=1)
+@stac_updater.command(name='update-collection', short_help="update a static collection")
+@click.option('--name', '-n', type=str, required=True, help="Name of collection, must match catalog name referenced by STAC Items.")
+@click.option('--root', '-r', type=str, required=True, help="URL of collection.")
+@click.option('--long-poll/--short-poll', default=False, help="Enable long polling.")
+@click.option('--concurrency', type=int, default=1, help="Sets lambda concurrency limit when polling the queue.")
 def update_collection(name, root, long_poll, concurrency):
     # Create a SQS queue for the collection
     # Subscribe SQS queue to SNS topic with filter policy on collection name
@@ -42,9 +42,9 @@ def update_collection(name, root, long_poll, concurrency):
         with open(sls_config_path, 'w') as outf:
             yaml.dump(sls_config, outf, indent=1)
 
-@stac_updater.command(name='modify-kickoff')
-@click.option('--type', '-t', type=str, default='lambda')
-@click.option('--bucket_name', '-n', type=str)
+@stac_updater.command(name='modify-kickoff', short_help="modify event source of kickoff")
+@click.option('--type', '-t', type=str, default='lambda', help="Type of event source used by kickoff.")
+@click.option('--bucket_name', '-n', type=str, help="Required if type=='s3'; creates new bucket used by event source.")
 def modify_kickoff(type, bucket_name):
     func_name = 'kickoff'
 
@@ -66,8 +66,8 @@ def modify_kickoff(type, bucket_name):
         with open(sls_config_path, 'w') as outf:
             yaml.dump(sls_config, outf, indent=1)
 
-@stac_updater.command(name='add-notifications')
-@click.option('--topic_name', type=str, required=True)
+@stac_updater.command(name='add-notifications', short_help="notifications on catalog update")
+@click.option('--topic_name', type=str, required=True, help="Name of SNS topic.")
 def add_notifications(topic_name):
     # Remove all non-alphanumeric characters
     pattern = re.compile('[\W_]+')
@@ -86,7 +86,7 @@ def add_notifications(topic_name):
         with open(sls_config_path, 'w') as outf:
             yaml.dump(sls_config, outf, indent=1)
 
-@stac_updater.command(name='deploy')
+@stac_updater.command(name='deploy', short_help="deploy service to aws")
 def deploy():
     subprocess.call("docker build . -t stac-updater:latest", shell=True)
     subprocess.call("docker run --rm -v $PWD:/home/stac_updater -it stac-updater:latest package-service.sh", shell=True)
