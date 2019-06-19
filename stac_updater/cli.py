@@ -1,4 +1,5 @@
 import os
+import shutil
 
 import click
 import yaml
@@ -11,6 +12,10 @@ sls_config_path = os.path.join(os.path.dirname(__file__), '..', 'serverless.yml'
 @click.group()
 def stac_updater():
     pass
+
+@stac_updater.command(name='new-service')
+def new_service():
+    shutil.copyfile(sls_template_path, sls_config_path)
 
 @stac_updater.command(name='update-collection')
 @click.option('--name', '-n', type=str, required=True)
