@@ -26,11 +26,12 @@ provider:
         - sns:Subscribe
         - sqs:SendMessage
         - sqs:ReceiveMessage
+        - s3:*
       Effect: Allow
       Resource:
         - arn:aws:sqs:*
         - arn:aws:sns:*
-
+        - arn:aws:s3:::*
 functions:
   kickoff:
     handler: stac_updater.handler.kickoff
