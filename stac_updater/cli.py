@@ -45,22 +45,25 @@ def update_collection(name, root, long_poll, concurrency):
 @click.option('--type', '-t', type=str, default='lambda')
 @click.option('--bucket_name', '-n', type=str)
 def modify_kickoff(type, bucket_name):
+    func_name = 'kickoff'
+
     if type == 's3':
-        kickoff_func = resources.lambda_s3_trigger('kickoff', bucket_name)
+        kickoff_func = resources.lambda_s3_trigger(func_name, bucket_name)
+    elif type == 'lambda':
+        kickoff_func = resources.lambda_invoke(func_name)
     else:
-        kickoff_func = None
+        raise ValueError("The `type` parameter must be one of ['s3', 'lambda'].")
 
-    if kickoff_func:
-        # Add kickoff source event to environment
-        kickoff_func.update({'environment': {
-            'EVENT_SOURCE': type
-        }})
-        with open(sls_config_path, 'r') as f:
-            sls_config = yaml.unsafe_load(f)
-            sls_config['functions']['kickoff'].update(kickoff_func)
+    # Add kickoff source event to environment
+    kickoff_func.update({'environment': {
+        'EVENT_SOURCE': type
+    }})
+    with open(sls_config_path, 'r') as f:
+        sls_config = yaml.unsafe_load(f)
+        sls_config['functions']['kickoff'].update(kickoff_func)
 
-            with open(sls_config_path, 'w') as outf:
-                yaml.dump(sls_config, outf, indent=1)
+        with open(sls_config_path, 'w') as outf:
+            yaml.dump(sls_config, outf, indent=1)
 
 @stac_updater.command(name='add-notifications')
 @click.option('--topic_name', type=str, required=True)

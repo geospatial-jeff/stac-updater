@@ -128,6 +128,12 @@ def lambda_s3_trigger(func_name, bucket_name):
 
     return func
 
+def lambda_invoke(func_name):
+    func = {
+        "handler": f"stac_updater.handler.{func_name}",
+    }
+    return func
+
 def update_collection(name, root, filter_rule, long_poll, concurrency):
     # Remove all non-alphanumeric characters
     pattern = re.compile('[\W_]+')
