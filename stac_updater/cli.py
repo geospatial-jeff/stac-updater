@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+import subprocess
 
 import click
 import yaml
@@ -84,3 +85,10 @@ def add_notifications(topic_name):
 
         with open(sls_config_path, 'w') as outf:
             yaml.dump(sls_config, outf, indent=1)
+
+@stac_updater.command(name='deploy')
+def deploy():
+    subprocess.call("docker build . -t stac-updater:latest", shell=True)
+    subprocess.call("docker run --rm -v $PWD:/home/stac_updater -it stac-updater:latest package-service.sh", shell=True)
+    subprocess.call("npm install serverless-pseudo-parameters", shell=True)
+    subprocess.call("sls deploy -v", shell=True)
