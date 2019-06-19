@@ -46,7 +46,14 @@ def update_collection(name, root, long_poll, concurrency):
 def modify_kickoff(type, bucket_name):
     if type == 's3':
         kickoff_func = resources.lambda_s3_trigger('kickoff', bucket_name)
+    else:
+        kickoff_func = None
 
+    if kickoff_func:
+        # Add kickoff source event to environment
+        kickoff_func.update({'environment': {
+            'EVENT_SOURCE': type
+        }})
         with open(sls_config_path, 'r') as f:
             sls_config = yaml.unsafe_load(f)
             sls_config['functions']['kickoff'].update(kickoff_func)
