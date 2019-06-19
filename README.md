@@ -16,7 +16,7 @@ Use the [stac-updater CLI](stac_updater/cli.py) to build and deploy your service
 stac-updater new-service
 
 # Build AWS resources to update collection
-stac-updater update-collection --name landsat-8-l1 --root https://stac.com/landsat-8-l1/catalog.json
+stac-updater update-collection --root https://stac.com/landsat-8-l1/catalog.json
 
 # Modify kickoff event source to s3:ObjectCreated
 stac-updater modify-kickoff --type s3 --bucket_name stac-updater-kickoff

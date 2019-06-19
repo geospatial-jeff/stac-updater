@@ -5,6 +5,7 @@ import subprocess
 
 import click
 import yaml
+from satstac import Collection
 
 from stac_updater import resources
 
@@ -20,14 +21,16 @@ def new_service():
     shutil.copyfile(sls_template_path, sls_config_path)
 
 @stac_updater.command(name='update-collection', short_help="update a static collection")
-@click.option('--name', '-n', type=str, required=True, help="Name of collection, must match catalog name referenced by STAC Items.")
 @click.option('--root', '-r', type=str, required=True, help="URL of collection.")
 @click.option('--long-poll/--short-poll', default=False, help="Enable long polling.")
 @click.option('--concurrency', type=int, default=1, help="Sets lambda concurrency limit when polling the queue.")
-def update_collection(name, root, long_poll, concurrency):
+def update_collection(root, long_poll, concurrency):
     # Create a SQS queue for the collection
     # Subscribe SQS queue to SNS topic with filter policy on collection name
     # Configure lambda function and attach to SQS queue (use ENV variables to pass state)
+
+    name = Collection.open(root).id
+    print(name)
 
     filter_rule = {'collection': [name]}
 
