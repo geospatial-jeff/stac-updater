@@ -1,5 +1,5 @@
 import os
-import subprocess
+import json
 
 import click
 import yaml
@@ -7,72 +7,40 @@ import yaml
 from stac_updater import resources
 
 
+
 @click.group()
 def stac_updater():
     pass
 
-@stac_updater.command(name='build-project')
-def build_project():
-    user_config_path = os.path.join(os.path.dirname(__file__), '..', 'config.yml')
+# Base deployment starts out with a single SNS topic which receives new STAC Items as messages
+# Also a lambda function which ingests a STAC Item from various payloads and sends SNS message with collection filter.
 
-    with open(user_config_path, 'r') as f:
-        user_config = yaml.load(f, Loader=yaml.BaseLoader)
-        user_keys = list(user_config)
+@stac_updater.command(name='update-collection')
+@click.option('--name', '-n', type=str, required=True)
+@click.option('--root', '-r', type=str, required=True)
+def update_collection(name, root):
+    # Create a SQS queue for the collection
+    # Subscribe SQS queue to SNS topic with filter policy on collection name
+    # Configure lambda function and attach to SQS queue (use ENV variables to pass state)
 
-        sls_config = {
-            'service': user_config['service']['name'] + '-${self:provider.stage}',
-            'provider': {
-                'name': 'aws',
-                'runtime': 'python3.7',
-                'stage': user_config['service']['stage'],
-                'region': user_config['service']['region'],
-                'environment': {
-                    'REGION': user_config['service']['region']
-                }
-            },
-            'functions': {
-                "kickoff": {
-                    "handler": "handler.kickoff"
-                },
-            },
-            'resources': {
-                'Resources': resources.sns_topic()
-            },
-            'plugins': [
-                'serverless-pseudo-parameters'
-            ],
-            'package': {
-                'artifact': 'lambda-deploy.zip'
-            }
-        }
+    sls_template_path = os.path.join(os.path.dirname(__file__), '..', 'serverless_template.yml')
+    sls_config_path = os.path.join(os.path.dirname(__file__), '..', 'serverless.yml')
 
-        # Generate AWS resources to update static STAC catalog
-        if 'static_catalog' in user_keys:
-            sls_config['provider']['environment'].update({
-                'ITEM_PATH': user_config['static_catalog']['item_path'],
-                'ITEM_NAME': user_config['static_catalog']['item_name']
-            })
+    filter_rule = {'collection': [name]}
 
-            aws_resources = resources.setup_resources('static')
-            sls_config['resources']['Resources'].update(aws_resources['resources'])
-            sls_config['functions'].update(aws_resources['functions'])
+    with open(sls_template_path, 'r') as f:
+        sls_template = yaml.load(f, Loader=yaml.BaseLoader)
 
-        if 'dynamic_catalog' in user_keys:
-            sls_config['provider']['environment'].update({'INGEST_ARN': user_config['dynamic_catalog']['ingest_arn']})
 
-            aws_resources = resources.setup_resources('dynamic')
-            sls_config['resources']['Resources'].update(aws_resources['resources'])
-            sls_config['functions'].update(aws_resources['functions'])
+        aws_resources = resources.update_collection(name, root, filter_rule)
+        sls_template['resources']['Resources'].update(aws_resources['resources'])
+        sls_template['functions'].update(aws_resources['functions'])
 
-        # Save to serverless.yml file
-        with open('serverless.yml', 'w') as outfile:
-            yaml.dump(sls_config, outfile, indent=1)
+        with open(sls_config_path, 'w') as outf:
+            yaml.dump(sls_template, outf, indent=1)
 
-@stac_updater.command(name='deploy-project')
-def deploy_project():
-    # Build docker image
-    subprocess.call("docker build . -t stac_updater:latest", shell=True)
-    subprocess.call("docker run --rm -v $PWD:/home/stac_updater -it stac_updater:latest package-service.sh", shell=True)
-    subprocess.call("sls deploy -v", shell=True)
+
+
+
 
 

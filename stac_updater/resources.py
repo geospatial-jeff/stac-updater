@@ -1,7 +1,6 @@
-from stac_updater import names
+import re
 
-
-def subscribe_sqs_to_sns(queue_name, topic_name):
+def subscribe_sqs_to_sns(queue_name, topic_name, filter_policy=None):
 
     policy = {
         "Type": "AWS::SQS::QueuePolicy",
@@ -22,7 +21,9 @@ def subscribe_sqs_to_sns(queue_name, topic_name):
                         "Action": "SQS:SendMessage",
                         "Condition": {
                             "ArnEquals": {
-                                "aws:SourceArn": topic_name
+                                "aws:SourceArn": {
+                                    "Ref": topic_name
+                                }
                             }
                         }
                     }
@@ -51,6 +52,11 @@ def subscribe_sqs_to_sns(queue_name, topic_name):
         }
     }
 
+    if filter_policy:
+        subscription['Properties'].update({
+            "FilterPolicy": filter_policy
+        })
+
     return subscription, policy
 
 def sqs_queue(queue_name, dlq_name=None, maxRetry=3):
@@ -75,18 +81,12 @@ def sqs_queue(queue_name, dlq_name=None, maxRetry=3):
 
     return resource
 
-def sns_topic():
-    resource = {
-        "Type": "AWS::SNS::Topic",
-        "Properties": {
-            "TopicName": names.sns_topic
-        }
-    }
-    return {names.sns_topic: resource}
-
-def lambda_sqs_trigger(func_name, queue_name):
+def lambda_sqs_trigger(func_name, queue_name, catalog_root):
     func = {
         "handler": f"stac_updater.handler.{func_name}",
+        "environment": {
+            'COLLECTION_ROOT': catalog_root
+        },
         "events": [
             {
                 "sqs": {
@@ -100,18 +100,21 @@ def lambda_sqs_trigger(func_name, queue_name):
 
     return func
 
+def update_collection(name, root, filter_rule):
+    # Remove all non-alphanumeric characters
+    pattern = re.compile('[\W_]+')
+    name = pattern.sub('', name)
 
-def setup_resources(cat_type):
-    dlq_name = getattr(names, f"{cat_type}_dlq")
-    queue_name = getattr(names, f"{cat_type}_queue")
-    sns_sub_name = getattr(names, f"{cat_type}_sns_sub")
-    sqs_policy_name = getattr(names, f"{cat_type}_sqs_policy")
-    lambda_name = getattr(names, f"{cat_type}_lambda_updater")
+    dlq_name = f"{name}Dlq"
+    queue_name = f"{name}Queue"
+    sns_sub_name = f"{name}SnsSub"
+    sqs_policy_name = f"{name}SqsPolicy"
+    lambda_name = "update_collection"
 
     dlq = sqs_queue(dlq_name)
     queue = sqs_queue(queue_name, dlq_name=dlq_name, maxRetry=3)
-    sns_subscription, sqs_policy = subscribe_sqs_to_sns(queue_name, names.sns_topic)
-    lambda_updater = lambda_sqs_trigger(lambda_name, queue_name)
+    sns_subscription, sqs_policy = subscribe_sqs_to_sns(queue_name, 'newStacItemTopic', filter_rule)
+    lambda_updater = lambda_sqs_trigger(lambda_name, queue_name, root)
 
     return {
         'resources': {
@@ -121,9 +124,6 @@ def setup_resources(cat_type):
             sqs_policy_name: sqs_policy
         },
         'functions': {
-            lambda_name: lambda_updater
+            f"{name}_{lambda_name}": lambda_updater
         }
     }
-
-
-

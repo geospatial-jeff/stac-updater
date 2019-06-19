@@ -1,0 +1,49 @@
+########################
+# Edit these variables #
+########################
+custom:
+  service-name: stac-updater
+  stage: dev
+  region: us-east-1
+
+####################
+# Don't edit below #
+####################
+
+service: ${self:custom.service-name}
+provider:
+  name: aws
+  runtime: python3.7
+  stage: ${self:custom.stage}
+  region: ${self:custom.region}
+  environment:
+    STAGE: ${self:provider.stage}
+    REGION: ${self:provider.region}
+  iamRoleStatementsName: ${self:custom.service-name}-role
+  iamRoleStatements:
+    - Action:
+        - sns:Publish
+        - sns:Subscribe
+        - sqs:SendMessage
+        - sqs:ReceiveMessage
+      Effect: Allow
+      Resource:
+        - arn:aws:sqs:*
+        - arn:aws:sns:*
+
+functions:
+  kickoff:
+    handler: stac_updater.handler.kickoff
+
+resources:
+  Resources:
+    newStacItemTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: newStacItemTopic
+
+plugins:
+  - serverless-pseudo-parameters
+
+package:
+  artifact: lambda-deploy.zip
