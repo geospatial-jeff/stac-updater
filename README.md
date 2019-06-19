@@ -9,7 +9,7 @@ python setup.py develop
 ```
 
 # Usage
-Use the [stac-updater CLI](stac_updater/cli.py) to build and deploy your service.
+Use the [stac-updater CLI](stac_updater/cli.py) to build and deploy your service.  You may customize the name, stage, and region of the service at the top of [serverless_template.yml](serverless_template.yml).
 
 ## Update Static Collection
 ```
