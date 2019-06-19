@@ -4,11 +4,14 @@ import json
 from satstac import Collection, Item
 import boto3
 
+from stac_updater import utils
+
 sns_client = boto3.client('sns')
 s3_res = boto3.resource('s3')
 
 ACCOUNT_ID = boto3.client('sts').get_caller_identity()['Account']
 REGION = os.getenv('REGION')
+NOTIFICATION_TOPIC = os.getenv('NOTIFICATION_TOPIC')
 
 
 def kickoff(event, context):
@@ -56,3 +59,11 @@ def update_collection(event, context):
             kwargs.update({'filename': message['filename']})
         col.add_item(**kwargs)
         col.save()
+
+        # Send message to SNS Topic if enabled
+        if NOTIFICATION_TOPIC:
+            kwargs = utils.stac_to_sns(message['stac_item'])
+            kwargs.update({
+                'TopicArn': f"arn:aws:sns:{REGION}:{ACCOUNT_ID}:{NOTIFICATION_TOPIC}"
+            })
+            sns_client.publish(**kwargs)

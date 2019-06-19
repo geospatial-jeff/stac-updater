@@ -84,6 +84,15 @@ def sqs_queue(queue_name, dlq_name=None, maxRetry=3, long_poll=False):
 
     return resource
 
+def sns_topic(topic_name):
+    resource = {
+        "Type": "AWS::SNS::Topic",
+        "Properties": {
+            "TopicName": topic_name
+        }
+    }
+    return resource
+
 def lambda_sqs_trigger(func_name, queue_name, catalog_root, concurrency):
     func = {
         "handler": f"stac_updater.handler.{func_name}",

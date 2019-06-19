@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 
 import click
@@ -60,3 +61,23 @@ def modify_kickoff(type, bucket_name):
 
             with open(sls_config_path, 'w') as outf:
                 yaml.dump(sls_config, outf, indent=1)
+
+@stac_updater.command(name='add-notifications')
+@click.option('--topic_name', type=str, required=True)
+def add_notifications(topic_name):
+    # Remove all non-alphanumeric characters
+    pattern = re.compile('[\W_]+')
+    alphanumeric_name = pattern.sub('', topic_name)
+
+    with open(sls_config_path, 'r') as f:
+        sls_config = yaml.unsafe_load(f)
+        sls_config['resources']['Resources'].update({
+            alphanumeric_name: resources.sns_topic(topic_name)
+        })
+
+        sls_config['provider']['environment'].update({
+            'NOTIFICATION_TOPIC': topic_name
+        })
+
+        with open(sls_config_path, 'w') as outf:
+            yaml.dump(sls_config, outf, indent=1)
