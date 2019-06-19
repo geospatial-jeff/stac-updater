@@ -104,6 +104,21 @@ def lambda_sqs_trigger(func_name, queue_name, catalog_root, concurrency):
 
     return func
 
+def lambda_s3_trigger(func_name, bucket_name):
+    func = {
+        "handler": f"stac_updater.handler.{func_name}",
+        "events": [
+            {
+                "s3": {
+                    "bucket": bucket_name,
+                    "event": "s3:ObjectCreated:*"
+                }
+            }
+        ]
+    }
+
+    return func
+
 def update_collection(name, root, filter_rule, long_poll, concurrency):
     # Remove all non-alphanumeric characters
     pattern = re.compile('[\W_]+')
