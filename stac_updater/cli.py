@@ -29,15 +29,16 @@ def update_collection(name, root, long_poll, concurrency):
 
     filter_rule = {'collection': [name]}
 
-    with open(sls_template_path, 'r') as f:
-        sls_template = yaml.load(f, Loader=yaml.BaseLoader)
+    with open(sls_config_path, 'r') as f:
+        # Using unsafe load to preserve type.
+        sls_config = yaml.unsafe_load(f)
 
         aws_resources = resources.update_collection(name, root, filter_rule, long_poll, concurrency)
-        sls_template['resources']['Resources'].update(aws_resources['resources'])
-        sls_template['functions'].update(aws_resources['functions'])
+        sls_config['resources']['Resources'].update(aws_resources['resources'])
+        sls_config['functions'].update(aws_resources['functions'])
 
         with open(sls_config_path, 'w') as outf:
-            yaml.dump(sls_template, outf, indent=1)
+            yaml.dump(sls_config, outf, indent=1)
 
 @stac_updater.command(name='modify-kickoff')
 @click.option('--type', '-t', type=str, default='lambda')
