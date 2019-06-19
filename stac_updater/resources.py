@@ -84,7 +84,7 @@ def sqs_queue(queue_name, dlq_name=None, maxRetry=3, long_poll=False):
 
     return resource
 
-def lambda_sqs_trigger(func_name, queue_name, catalog_root):
+def lambda_sqs_trigger(func_name, queue_name, catalog_root, concurrency):
     func = {
         "handler": f"stac_updater.handler.{func_name}",
         "environment": {
@@ -98,12 +98,13 @@ def lambda_sqs_trigger(func_name, queue_name, catalog_root):
                                                         queue_name),
                 }
             }
-        ]
+        ],
+        "reservedConcurrency": concurrency
     }
 
     return func
 
-def update_collection(name, root, filter_rule, long_poll):
+def update_collection(name, root, filter_rule, long_poll, concurrency):
     # Remove all non-alphanumeric characters
     pattern = re.compile('[\W_]+')
     name = pattern.sub('', name)
@@ -117,7 +118,7 @@ def update_collection(name, root, filter_rule, long_poll):
     dlq = sqs_queue(dlq_name)
     queue = sqs_queue(queue_name, dlq_name=dlq_name, maxRetry=3, long_poll=long_poll)
     sns_subscription, sqs_policy = subscribe_sqs_to_sns(queue_name, 'newStacItemTopic', filter_rule)
-    lambda_updater = lambda_sqs_trigger(lambda_name, queue_name, root)
+    lambda_updater = lambda_sqs_trigger(lambda_name, queue_name, root, concurrency)
 
     return {
         'resources': {

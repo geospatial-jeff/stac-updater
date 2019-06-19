@@ -13,7 +13,8 @@ def stac_updater():
 @click.option('--name', '-n', type=str, required=True)
 @click.option('--root', '-r', type=str, required=True)
 @click.option('--long-poll/--short-poll', default=False)
-def update_collection(name, root, long_poll):
+@click.option('--concurrency', type=int, default=1)
+def update_collection(name, root, long_poll, concurrency):
     # Create a SQS queue for the collection
     # Subscribe SQS queue to SNS topic with filter policy on collection name
     # Configure lambda function and attach to SQS queue (use ENV variables to pass state)
@@ -26,7 +27,7 @@ def update_collection(name, root, long_poll):
     with open(sls_template_path, 'r') as f:
         sls_template = yaml.load(f, Loader=yaml.BaseLoader)
 
-        aws_resources = resources.update_collection(name, root, filter_rule, long_poll)
+        aws_resources = resources.update_collection(name, root, filter_rule, long_poll, concurrency)
         sls_template['resources']['Resources'].update(aws_resources['resources'])
         sls_template['functions'].update(aws_resources['functions'])
 
