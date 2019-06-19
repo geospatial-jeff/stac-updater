@@ -35,6 +35,8 @@ provider:
 functions:
   kickoff:
     handler: stac_updater.handler.kickoff
+    environment:
+      EVENT_SOURCE: lambda
 
 resources:
   Resources:
