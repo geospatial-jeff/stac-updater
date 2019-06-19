@@ -30,8 +30,6 @@ def update_collection(root, long_poll, concurrency):
     # Configure lambda function and attach to SQS queue (use ENV variables to pass state)
 
     name = Collection.open(root).id
-    print(name)
-
     filter_rule = {'collection': [name]}
 
     with open(sls_config_path, 'r') as f:
