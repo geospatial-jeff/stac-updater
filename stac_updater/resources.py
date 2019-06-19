@@ -59,7 +59,7 @@ def subscribe_sqs_to_sns(queue_name, topic_name, filter_policy=None):
 
     return subscription, policy
 
-def sqs_queue(queue_name, dlq_name=None, maxRetry=3):
+def sqs_queue(queue_name, dlq_name=None, maxRetry=3, long_poll=False):
     resource = {
         "Type": "AWS::SQS::Queue",
         "Properties": {
@@ -78,6 +78,9 @@ def sqs_queue(queue_name, dlq_name=None, maxRetry=3):
             "maxReceiveCount": maxRetry,
         }
         resource['Properties'].update({'RedrivePolicy': redrive_policy})
+
+    if long_poll:
+        resource['Properties'].update({'ReceiveMessageWaitTimeSeconds': 20})
 
     return resource
 
@@ -100,7 +103,7 @@ def lambda_sqs_trigger(func_name, queue_name, catalog_root):
 
     return func
 
-def update_collection(name, root, filter_rule):
+def update_collection(name, root, filter_rule, long_poll):
     # Remove all non-alphanumeric characters
     pattern = re.compile('[\W_]+')
     name = pattern.sub('', name)
@@ -112,7 +115,7 @@ def update_collection(name, root, filter_rule):
     lambda_name = "update_collection"
 
     dlq = sqs_queue(dlq_name)
-    queue = sqs_queue(queue_name, dlq_name=dlq_name, maxRetry=3)
+    queue = sqs_queue(queue_name, dlq_name=dlq_name, maxRetry=3, long_poll=long_poll)
     sns_subscription, sqs_policy = subscribe_sqs_to_sns(queue_name, 'newStacItemTopic', filter_rule)
     lambda_updater = lambda_sqs_trigger(lambda_name, queue_name, root)
 
