@@ -58,6 +58,9 @@ Once deployed, end-users may subscribe to the newly created SNS topic to be noti
 }
 ```
 
+![abc](docs/images/sns-notifications.png)
+
+
 # TODOS
 - Add support for dynamic catalogs ([sat-api](https://github.com/sat-utils/sat-api), [staccato](https://github.com/boundlessgeo/staccato)).
-- Add aggregator service for metrics/logging etc.
+- Add aggregator service for metrics/logging etc on batch jobs.
