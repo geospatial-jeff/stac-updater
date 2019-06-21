@@ -67,6 +67,9 @@ def modify_kickoff(type, bucket_name, topic_name):
         sls_config = yaml.unsafe_load(f)
         sls_config['functions']['kickoff'].update(kickoff_func)
 
+        if type == 'lambda' and 'events' in sls_config['functions']['kickoff']:
+            del(sls_config['functions']['kickoff']['events'])
+
         with open(sls_config_path, 'w') as outf:
             yaml.dump(sls_config, outf, indent=1)
 
