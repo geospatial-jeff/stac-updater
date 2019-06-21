@@ -128,6 +128,23 @@ def lambda_s3_trigger(func_name, bucket_name):
 
     return func
 
+def lambda_sns_trigger(func_name, topic_name):
+    func = {
+        "handler": f"stac_updater.handler.{func_name}",
+        "events": [
+            {
+                "sns": {
+                    "arn": "arn:aws:sns:#{}:#{}:{}".format("{AWS::Region}",
+                                                        "{AWS::AccountId}",
+                                                        topic_name),
+                    "topicName": topic_name
+                }
+            }
+        ]
+    }
+
+    return func
+
 def lambda_invoke(func_name):
     func = {
         "handler": f"stac_updater.handler.{func_name}",

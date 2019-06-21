@@ -24,6 +24,8 @@ def kickoff(event, context):
         content_object = s3_res.Object(bucket, key)
         file_content = content_object.get()['Body'].read().decode('utf-8')
         payload = json.loads(file_content)
+    elif event_source == "sns":
+        payload = json.loads(event['Records'][0]['Sns']['Message'])
     else:
         # Default is lambda
         payload = event

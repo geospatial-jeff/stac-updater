@@ -45,14 +45,17 @@ def update_collection(root, long_poll, concurrency):
 
 @stac_updater.command(name='modify-kickoff', short_help="modify event source of kickoff")
 @click.option('--type', '-t', type=str, default='lambda', help="Type of event source used by kickoff.")
-@click.option('--bucket_name', '-n', type=str, help="Required if type=='s3'; creates new bucket used by event source.")
-def modify_kickoff(type, bucket_name):
+@click.option('--bucket_name', type=str, help="Required if type=='s3'; defines name of bucket used by event source.")
+@click.option('--topic_name', type=str, help="Required if type=='sns'; defines name of SNS topic used by event source.")
+def modify_kickoff(type, bucket_name, topic_name):
     func_name = 'kickoff'
 
     if type == 's3':
         kickoff_func = resources.lambda_s3_trigger(func_name, bucket_name)
     elif type == 'lambda':
         kickoff_func = resources.lambda_invoke(func_name)
+    elif type == 'sns':
+        kickoff_func = resources.lambda_sns_trigger(func_name, topic_name)
     else:
         raise ValueError("The `type` parameter must be one of ['s3', 'lambda'].")
 
