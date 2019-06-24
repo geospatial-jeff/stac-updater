@@ -39,7 +39,7 @@ Each call to `update-collection` tells the services to update a single collectio
 ![abc](docs/images/update-collection.png)
 
 ## SNS Notifications
-You may additionally deploy a SNS topic which publishes messages whenever a STAC Item is succesfully uploaded to a collection.
+You may deploy a SNS topic which publishes messages whenever a STAC Item is succesfully uploaded to a collection.
 
 ```
 # Add SNS notification
@@ -59,6 +59,38 @@ Once deployed, end-users may subscribe to the newly created SNS topic to be noti
 ```
 
 ![abc](docs/images/sns-notifications.png)
+
+## Logging
+You may pipe CloudWatch logs to a deployed instance of AWS Elasticsearch service for monitoring and visualizing with kibana.
+
+```
+# Add ES logging
+stac-updater add-logging --es_host xxxxxxxxxx.region.es.amazonaws.com
+```
+
+Logs are saved to the `stac_updater_logs_YYYYMMDD` index (a new index is created each day) with the following schema:
+
+| Field Name | Type  | Description | Example |
+| ---------- | ----- | ----------- | ------- |
+| id | string | Unique ID of the CloudWatch log event. | 34819275800 |
+| timestamp | date | Date of the lambda invocation. | June 23rd 2019, 21:25:26.649 |
+| BilledDuration | str | Time (ms) charged for execution. | 87 |
+| CollectionName | date | Date of the lambda invocation. | landsat8 |
+| Duration | str | Runtime (ms) of the lambda function. | 442.49 |
+| ItemCount | number | Number of STAC Items processed by the invocation. | 4 |
+| ItemLinks | string array | URLs of STAC Items processed by the invocation. | ['https://stac.s3.amazonaws.com/landsat8/item.json'] |
+| MemorySize | number | Memory limit of lambda function. | 1024 |
+| MaxMemoryUsed | number | Maximum memory (MB) consumed by the lambda function. | 87 |
+| RequestId | str | Unique request ID of the lambda invocation. | 87 |
+
+The following image is a kibana time-series visualization showing number of lambda invocations binned into 15 second intervals after 200 STAC Items were pushed into the queue.  Notice how lambda scales up to handle the initial burst of messages.
+
+![es-logging-1](docs/images/es-logging-invokes.png)
+
+It took 86 total invocations to process the 200 STAC Items.
+
+![es-logging-2](docs/images/es-logging-summary.png)
+
 
 
 # TODOS
