@@ -145,6 +145,24 @@ def lambda_sns_trigger(func_name, topic_name):
 
     return func
 
+def lambda_cloudwatch_trigger(func_name, service_name, service_stage, collections):
+    func = {
+        "handler": f"stac_updater.handler.{func_name}",
+        "events": []
+    }
+
+    for coll in collections:
+        func['events'].append(
+            {
+                "cloudwatchLog": {
+                    "logGroup": f"/aws/lambda/{service_name}-{service_stage}-{coll}_update_collection",
+                    "filter": "?REPORT ?LOGS"
+                }
+            }
+        )
+
+    return func
+
 def lambda_invoke(func_name):
     func = {
         "handler": f"stac_updater.handler.{func_name}",
@@ -152,10 +170,6 @@ def lambda_invoke(func_name):
     return func
 
 def update_collection(name, root, filter_rule, long_poll, concurrency):
-    # Remove all non-alphanumeric characters
-    pattern = re.compile('[\W_]+')
-    name = pattern.sub('', name)
-
     dlq_name = f"{name}Dlq"
     queue_name = f"{name}Queue"
     sns_sub_name = f"{name}SnsSub"
