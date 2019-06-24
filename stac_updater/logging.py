@@ -9,7 +9,6 @@ from requests_aws4auth import AWS4Auth
 
 ES_HOST = os.getenv('ES_HOST')
 REGION = os.getenv('REGION')
-REGION = 'us-east-2'
 
 if ES_HOST:
     cred = boto3.Session().get_credentials()
