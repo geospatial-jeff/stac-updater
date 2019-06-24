@@ -32,6 +32,9 @@ def update_collection(root, long_poll, concurrency):
     name = Collection.open(root).id
     filter_rule = {'collection': [name]}
 
+    pattern = re.compile('[\W_]+')
+    name = pattern.sub('', name)
+
     with open(sls_config_path, 'r') as f:
         # Using unsafe load to preserve type.
         sls_config = yaml.unsafe_load(f)
@@ -92,6 +95,36 @@ def add_notifications(topic_name):
 
         with open(sls_config_path, 'w') as outf:
             yaml.dump(sls_config, outf, indent=1)
+
+@stac_updater.command(name='add-logging', short_help="Pipe cloudwatch logs into elasticsearch.")
+@click.option('--es_host', type=str, required=True, help="Domain name of elasticsearch instance.")
+def add_logging(es_host):
+    # Add the ES_LOGGING lambda function (cloudwatch trigger).
+    # Add es_domain to ES_LOGGING lambda as environment variable.
+    # Update IAM permissions (es:*, arn:Aws:es:*)
+    with open(sls_config_path, 'r') as f:
+        sls_config = yaml.unsafe_load(f)
+
+        # Create lambda function
+        service_name = sls_config['custom']['service-name']
+        service_stage = sls_config['custom']['stage']
+        collection_names = [x.split('_')[0] for x in list(sls_config['functions']) if x not in ['kickoff', 'es_log_ingest']]
+        func = resources.lambda_cloudwatch_trigger("es_log_ingest", service_name, service_stage, collection_names)
+        func.update({'environment': {'ES_HOST': es_host}})
+        sls_config['functions'].update({'es_log_ingest': func})
+
+        # Expanding IAM role
+        if 'es:*' not in sls_config['provider']['iamRoleStatements'][0]['Action']:
+            sls_config['provider']['iamRoleStatements'][0]['Action'].append('es:*')
+        if 'arn:aws:es:*' not in sls_config['provider']['iamRoleStatements'][0]['Resource']:
+            sls_config['provider']['iamRoleStatements'][0]['Resource'].append('arn:aws:ecs:*')
+
+        with open(sls_config_path, 'w') as outf:
+            yaml.dump(sls_config, outf, indent=1)
+
+
+
+
 
 @stac_updater.command(name='deploy', short_help="deploy service to aws")
 def deploy():
