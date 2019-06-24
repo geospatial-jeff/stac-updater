@@ -9,6 +9,7 @@ from requests_aws4auth import AWS4Auth
 
 ES_HOST = os.getenv('ES_HOST')
 REGION = os.getenv('REGION')
+REGION = 'us-east-2'
 
 if ES_HOST:
     cred = boto3.Session().get_credentials()
@@ -32,7 +33,7 @@ def create_index(index_name):
                         "BilledDuration": {"type": "float"},
                         "CollectionName": {"type": "text"},
                         "Duration": {"type": "float"},
-                        "ItemCount": {"type": "int"},
+                        "ItemCount": {"type": "integer"},
                         "ItemLinks": {"type": "text"},
                         "MaxMemoryUsed": {"type": "float"},
                         "MemorySize": {"type": "float"},
