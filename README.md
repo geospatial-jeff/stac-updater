@@ -95,5 +95,3 @@ It took 86 total invocations to process the 200 STAC Items.
 
 # TODOS
 - Add support for dynamic catalogs ([sat-api](https://github.com/sat-utils/sat-api), [staccato](https://github.com/boundlessgeo/staccato)).
-- Add aggregator service for metrics/logging etc on batch jobs.
-- Add SNS event source.
