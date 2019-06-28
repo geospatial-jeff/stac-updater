@@ -24,7 +24,9 @@ def new_service():
 @click.option('--root', '-r', type=str, required=True, help="URL of collection.")
 @click.option('--long-poll/--short-poll', default=False, help="Enable long polling.")
 @click.option('--concurrency', type=int, default=1, help="Sets lambda concurrency limit when polling the queue.")
-def update_collection(root, long_poll, concurrency):
+@click.option('--path', type=str, help="Pattern used by sat-stac to build sub-catalogs.")
+@click.option('--filename', type=str, help="Pattern used by sat-stac to build item name.")
+def update_collection(root, long_poll, concurrency, path, filename):
     # Create a SQS queue for the collection
     # Subscribe SQS queue to SNS topic with filter policy on collection name
     # Configure lambda function and attach to SQS queue (use ENV variables to pass state)
@@ -39,7 +41,7 @@ def update_collection(root, long_poll, concurrency):
         # Using unsafe load to preserve type.
         sls_config = yaml.unsafe_load(f)
 
-        aws_resources = resources.update_collection(name, root, filter_rule, long_poll, concurrency)
+        aws_resources = resources.update_collection(name, root, filter_rule, long_poll, concurrency, path, filename)
         sls_config['resources']['Resources'].update(aws_resources['resources'])
         sls_config['functions'].update(aws_resources['functions'])
 
