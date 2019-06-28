@@ -128,17 +128,48 @@ def lambda_s3_trigger(func_name, bucket_name):
 
     return func
 
+def lambda_sns_trigger(func_name, topic_name):
+    func = {
+        "handler": f"stac_updater.handler.{func_name}",
+        "events": [
+            {
+                "sns": {
+                    "arn": "arn:aws:sns:#{}:#{}:{}".format("{AWS::Region}",
+                                                        "{AWS::AccountId}",
+                                                        topic_name),
+                    "topicName": topic_name
+                }
+            }
+        ]
+    }
+
+    return func
+
+def lambda_cloudwatch_trigger(func_name, service_name, service_stage, collections):
+    func = {
+        "handler": f"stac_updater.handler.{func_name}",
+        "events": []
+    }
+
+    for coll in collections:
+        func['events'].append(
+            {
+                "cloudwatchLog": {
+                    "logGroup": f"/aws/lambda/{service_name}-{service_stage}-{coll}_update_collection",
+                    "filter": "?REPORT ?LOGS"
+                }
+            }
+        )
+
+    return func
+
 def lambda_invoke(func_name):
     func = {
         "handler": f"stac_updater.handler.{func_name}",
     }
     return func
 
-def update_collection(name, root, filter_rule, long_poll, concurrency):
-    # Remove all non-alphanumeric characters
-    pattern = re.compile('[\W_]+')
-    name = pattern.sub('', name)
-
+def update_collection(name, root, filter_rule, long_poll, concurrency, path, filename):
     dlq_name = f"{name}Dlq"
     queue_name = f"{name}Queue"
     sns_sub_name = f"{name}SnsSub"
@@ -149,6 +180,16 @@ def update_collection(name, root, filter_rule, long_poll, concurrency):
     queue = sqs_queue(queue_name, dlq_name=dlq_name, maxRetry=3, long_poll=long_poll)
     sns_subscription, sqs_policy = subscribe_sqs_to_sns(queue_name, 'newStacItemTopic', filter_rule)
     lambda_updater = lambda_sqs_trigger(lambda_name, queue_name, root, concurrency)
+
+    if path:
+        lambda_updater['environment'].update({
+            'PATH': path
+        })
+
+    if filename:
+        lambda_updater['environment'].update({
+            'FILENAME': filename
+        })
 
     return {
         'resources': {

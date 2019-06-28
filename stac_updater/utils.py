@@ -1,6 +1,5 @@
 import json
 
-
 def stac_to_sns(stac_item):
     """Convert a STAC item to SNS message (with attributes)"""
 
