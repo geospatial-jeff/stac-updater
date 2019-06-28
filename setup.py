@@ -4,7 +4,7 @@ with open('./requirements.txt') as reqs:
     requirements = [line.rstrip() for line in reqs]
 
 setup(name="STAC Updater",
-      version='0.1',
+      version='0.2',
       author='Jeff Albrecht',
       author_email='geospatialjeff@gmail.com',
       packages=find_packages(exclude=['package']),
