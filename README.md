@@ -71,7 +71,7 @@ Logs are saved to the `stac_updater_logs_YYYYMMDD` index (a new index is created
 | id | string | Unique ID of the CloudWatch log event. | 34819275800 |
 | timestamp | date | Date of the lambda invocation. | June 23rd 2019, 21:25:26.649 |
 | BilledDuration | str | Time (ms) charged for execution. | 87 |
-| CollectionName | date | Date of the lambda invocation. | landsat8 |
+| CollectionName | str | Name of collection. | landsat8 |
 | Duration | str | Runtime (ms) of the lambda function. | 442.49 |
 | ItemCount | number | Number of STAC Items processed by the invocation. | 4 |
 | ItemLinks | string array | URLs of STAC Items processed by the invocation. | ['https://stac.s3.amazonaws.com/landsat8/item.json'] |
