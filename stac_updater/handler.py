@@ -31,14 +31,16 @@ def kickoff(event, context):
         # Default is lambda
         payload = event
 
+    print(payload)
+
     try:
-        coll_name = payload['stac_item']['properties']['collection']
+        coll_name = payload['properties']['collection']
     except KeyError:
-        coll_name = payload['stac_item']['collection']
+        coll_name = payload['collection']
 
     sns_client.publish(
         TopicArn=f"arn:aws:sns:{REGION}:{ACCOUNT_ID}:newStacItemTopic",
-        Message=json.dumps(event),
+        Message=json.dumps(payload),
         MessageAttributes={
             'collection': {
                 'DataType': 'String',
@@ -49,19 +51,25 @@ def kickoff(event, context):
 
 def update_collection(event, context):
     collection_root = os.getenv('COLLECTION_ROOT')
+    path = os.getenv('PATH')
+    filename = os.getenv('FILENAME')
+
     item_count = len(event['Records'])
     stac_links = []
 
     for record in event['Records']:
-        message = json.loads(record['body'])
+        stac_item = json.loads(record['body'])
+
+        print(stac_item)
 
         col = Collection.open(collection_root)
         collection_name = col.id
-        kwargs = {'item': Item(message['stac_item'])}
-        if 'path' in message:
-            kwargs.update({'path': message['path']})
-        if 'filename' in message:
-            kwargs.update({'filename': message['filename']})
+        kwargs = {'item': Item(stac_item)}
+        if path:
+            kwargs.update({'path': '$' + '/$'.join(path.split('/'))})
+        if filename:
+            kwargs.update({'filename': '$' + '/$'.join(filename.split('/'))})
+        print(kwargs)
         col.add_item(**kwargs)
         col.save()
 
@@ -69,7 +77,7 @@ def update_collection(event, context):
 
         # Send message to SNS Topic if enabled
         if NOTIFICATION_TOPIC:
-            kwargs = utils.stac_to_sns(message['stac_item'])
+            kwargs = utils.stac_to_sns(kwargs['item'].data)
             kwargs.update({
                 'TopicArn': f"arn:aws:sns:{REGION}:{ACCOUNT_ID}:{NOTIFICATION_TOPIC}"
             })
@@ -89,11 +97,3 @@ def es_log_ingest(event, context):
 
     # Index to ES
     logging.index_logs(payload)
-
-
-
-
-
-
-
-
