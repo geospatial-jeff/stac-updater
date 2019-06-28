@@ -17,7 +17,9 @@ Use the [stac-updater CLI](stac_updater/cli.py) to build and deploy your service
 stac-updater new-service
 
 # Build AWS resources to update collection
-stac-updater update-collection --root https://stac.com/landsat-8-l1/catalog.json
+stac-updater update-collection --root https://stac.com/landsat-8-l1/catalog.json \
+                               --path {landsat:path}/{landsat:row} \
+                               --row  {date}/{id}
 
 # Modify kickoff event source to s3:ObjectCreated
 stac-updater modify-kickoff --type s3 --bucket_name stac-updater-kickoff
@@ -26,13 +28,7 @@ stac-updater modify-kickoff --type s3 --bucket_name stac-updater-kickoff
 stac-updater deploy
 ```
 
-Once deployed, any STAC Item uploaded to the `stac-updater-kickoff` bucket will be ingested by the service and added to the `https://stac.com/landsat-8-l1/catalog.json` collection.  Regardless of event source, the service expects the following JSON payload:
-
-| Field Name | Type  | Description | Example |
-| ---------- | ----- | ----------- | ------- |
-| stac_item  | dict  | **REQUIRED.** [STAC Item](https://github.com/radiantearth/stac-spec/tree/master/item-spec) to ingest into collection. | [link](https://github.com/radiantearth/stac-spec/blob/dev/item-spec/examples/sample-full.json) |
-| path  | str  | String pattern indicating subcatalogs.  Used by [sat-stac](https://github.com/sat-utils/sat-stac/blob/master/tutorial-1.ipynb#Views) to automatically build sub catalogs from item properties. | '${landsat:path}/${landsat:row}' |
-| filename  | str  | String pattern indicating filename. Used by [sat-stac](https://github.com/sat-utils/sat-stac/blob/master/tutorial-1.ipynb#Views) to automatically build item filename from item properties.| '${date}/${id}' |
+Once deployed, any STAC Item uploaded to the `stac-updater-kickoff` bucket will be ingested by the service and added to the `https://stac.com/landsat-8-l1/catalog.json` collection.  Regardless of event source, the service expects the payload to contain a [STAC Item](https://github.com/radiantearth/stac-spec/tree/master/item-spec).
 
 Each call to `update-collection` tells the services to update a single collection.  Updating multiple collections within a single deployment is accomplished with multiple calls to `update-collection`.  When updating multiple collections, the services uses a SNS fanout pattern to distribute messages across multiple queues (1 queue per collection).
 
