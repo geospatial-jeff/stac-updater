@@ -88,7 +88,7 @@ It took 86 total invocations to process the 200 STAC Items.
 ![es-logging-2](docs/images/es-logging-summary.png)
 
 ## Update Dynamic Catalog
-STAC Items which are successfully ingested into a static collection may also by ingested into a deployed instance of sat-api.
+STAC Items which are successfully ingested into a static collection may also by ingested into a deployed instance of [sat-api](https://github.com/sat-utils/sat-api).
 
 ```
 stac-updater update-dynamic-collection --arn arn:aws:lambda:<region>:<accountid>:function:sat-api-ingest
