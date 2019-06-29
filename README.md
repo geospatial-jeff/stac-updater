@@ -99,4 +99,4 @@ stac-updater update-dynamic-collection --arn arn:aws:lambda:<region>:<accountid>
 
 
 # TODOS
-- Add support for dynamic catalogs ([sat-api](https://github.com/sat-utils/sat-api), [staccato](https://github.com/boundlessgeo/staccato)).
+- Add support for [staccato](https://github.com/boundlessgeo/staccato).
