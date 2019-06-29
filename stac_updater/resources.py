@@ -1,4 +1,3 @@
-import re
 
 def subscribe_sqs_to_sns(queue_name, topic_name, filter_policy=None):
 
@@ -58,6 +57,33 @@ def subscribe_sqs_to_sns(queue_name, topic_name, filter_policy=None):
         })
 
     return subscription, policy
+
+def subscribe_lambda_to_sns(lambda_arn, topic_name):
+
+    lambda_policy = {
+        "Type": "AWS::Lambda::Permission",
+        "Properties": {
+            "Action": "lambda:Invokefunction",
+            "FunctionName": lambda_arn,
+            "Principal": "sns.amazonaws.com",
+            "SourceArn": {"Ref": topic_name},
+
+        }
+    }
+
+    subscription = {
+        "Type": "AWS::SNS::Subscription",
+        "Properties": {
+            "TopicArn": "arn:aws:sns:#{}:#{}:{}".format("{AWS::Region}",
+                                                        "{AWS::AccountId}",
+                                                        topic_name),
+            "Endpoint": lambda_arn,
+            "Protocol": "lambda",
+        }
+    }
+
+    return subscription, lambda_policy
+
 
 def sqs_queue(queue_name, dlq_name=None, maxRetry=3, long_poll=False):
     resource = {
