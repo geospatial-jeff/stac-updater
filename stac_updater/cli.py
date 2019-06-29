@@ -79,16 +79,14 @@ def modify_kickoff(type, bucket_name, topic_name):
             yaml.dump(sls_config, outf, indent=1)
 
 @stac_updater.command(name='add-notifications', short_help="notifications on catalog update")
-@click.option('--topic_name', type=str, required=True, help="Name of SNS topic.")
-def add_notifications(topic_name):
+def add_notifications():
     # Remove all non-alphanumeric characters
-    pattern = re.compile('[\W_]+')
-    alphanumeric_name = pattern.sub('', topic_name)
+    topic_name = 'stacUpdaterNotifications'
 
     with open(sls_config_path, 'r') as f:
         sls_config = yaml.unsafe_load(f)
         sls_config['resources']['Resources'].update({
-            alphanumeric_name: resources.sns_topic(topic_name)
+            topic_name: resources.sns_topic(topic_name)
         })
 
         sls_config['provider']['environment'].update({
