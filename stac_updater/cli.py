@@ -2,6 +2,7 @@ import os
 import re
 import shutil
 import subprocess
+import json
 
 import click
 import yaml
@@ -149,9 +150,42 @@ def add_logging(es_host):
         with open(sls_config_path, 'w') as outf:
             yaml.dump(sls_config, outf, indent=1)
 
-@stac_updater.command(name='deploy', short_help="deploy service to aws")
+@stac_updater.command(name='deploy', short_help="deploy service to aws.")
 def deploy():
     subprocess.call("docker build . -t stac-updater:latest", shell=True)
     subprocess.call("docker run --rm -v $PWD:/home/stac_updater -it stac-updater:latest package-service.sh", shell=True)
     subprocess.call("npm install serverless-pseudo-parameters", shell=True)
     subprocess.call("sls deploy -v", shell=True)
+
+@stac_updater.command(name='info', short_help="prints information about your service.")
+def info():
+    info = {}
+    with open(sls_config_path, 'r') as f:
+        sls_config = yaml.unsafe_load(f)
+        static_updaters = [sls_config['functions'][x] for x in sls_config['functions'] if x.endswith('update_collection')]
+        if len(static_updaters) > 0:
+            info.update({
+                'static_collections': [{
+                    'root': x['environment']['COLLECTION_ROOT'],
+                    'path': x['environment']['PATH'],
+                    'filename': x['environment']['FILENAME'],
+                    'eventSource': list(x['events'])[0]
+                } for x in static_updaters]
+            })
+
+        if notification_topic_name in sls_config['resources']['Resources']:
+            info.update({
+                'notifications': {
+                    'topicArn': 'arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:' + notification_topic_name
+                }
+            })
+
+        if 'es_log_ingest' in sls_config['functions']:
+            info.update({
+                'logging': {
+                    'host': sls_config['functions']['es_log_ingest']['environment']['ES_HOST'],
+                    'logGroups': [x['cloudwatchLog']['logGroup'] for x in sls_config['functions']['es_log_ingest']['events']]
+                }
+            })
+
+    print(json.dumps(info, indent=1))
