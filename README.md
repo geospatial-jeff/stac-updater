@@ -32,7 +32,7 @@ Once deployed, any STAC Item uploaded to the `stac-updater-kickoff` bucket will 
 
 Each call to `update-collection` tells the services to update a single collection.  Updating multiple collections within a single deployment is accomplished with multiple calls to `update-collection`.  When updating multiple collections, the services uses a SNS fanout pattern to distribute messages across multiple queues (1 queue per collection).
 
-![abc](docs/images/update-collection.png)
+![abc](docs/images/update-collection.png
 
 ## SNS Notifications
 You may deploy a SNS topic which publishes messages whenever a STAC Item is succesfully uploaded to a collection.
@@ -87,7 +87,16 @@ It took 86 total invocations to process the 200 STAC Items.
 
 ![es-logging-2](docs/images/es-logging-summary.png)
 
+## Update Dynamic Catalog
+STAC Items which are successfully ingested into a static collection may also by ingested into a deployed instance of [sat-api](https://github.com/sat-utils/sat-api).
+
+```
+stac-updater update-dynamic-collection --arn arn:aws:lambda:<region>:<accountid>:function:sat-api-ingest
+```
+
+![update-sat-api](docs/images/update-sat-api.png)
+
 
 
 # TODOS
-- Add support for dynamic catalogs ([sat-api](https://github.com/sat-utils/sat-api), [staccato](https://github.com/boundlessgeo/staccato)).
+- Add support for [staccato](https://github.com/boundlessgeo/staccato).

@@ -2,6 +2,7 @@ import os
 import re
 import shutil
 import subprocess
+import json
 
 import click
 import yaml
@@ -11,6 +12,7 @@ from stac_updater import resources
 
 sls_template_path = os.path.join(os.path.dirname(__file__), '..', 'serverless_template.yml')
 sls_config_path = os.path.join(os.path.dirname(__file__), '..', 'serverless.yml')
+notification_topic_name = 'stacUpdaterNotifications'
 
 @click.group()
 def stac_updater():
@@ -48,6 +50,34 @@ def update_collection(root, long_poll, concurrency, path, filename):
         with open(sls_config_path, 'w') as outf:
             yaml.dump(sls_config, outf, indent=1)
 
+@stac_updater.command(name='update-dynamic-catalog', short_help="update a dynamic catalog")
+@click.option('--arn', type=str, help="ARN of sat-api ingest lambda function.")
+def update_dynamic_catalog(arn):
+    # This microservice re-uses the SNS topic created with the `add_notifications` command
+    # Subscribe sat-api ingest function to SNS topic.
+
+    with open(sls_config_path, 'r') as f:
+        sls_config = yaml.unsafe_load(f)
+        if notification_topic_name not in sls_config['resources']['Resources']:
+
+            sls_config['resources']['Resources'].update({
+                notification_topic_name: resources.sns_topic(notification_topic_name)
+            })
+
+            sls_config['provider']['environment'].update({
+                'NOTIFICATION_TOPIC': notification_topic_name
+            })
+
+        sns_subscription, policy = resources.subscribe_lambda_to_sns(arn, notification_topic_name)
+        sls_config['resources']['Resources'].update({
+            'satApiIngestSubscription': sns_subscription,
+            'satApiIngestPolicy': policy
+        })
+
+        with open(sls_config_path, 'w') as outf:
+            yaml.dump(sls_config, outf, indent=1)
+
+
 @stac_updater.command(name='modify-kickoff', short_help="modify event source of kickoff")
 @click.option('--type', '-t', type=str, default='lambda', help="Type of event source used by kickoff.")
 @click.option('--bucket_name', type=str, help="Required if type=='s3'; defines name of bucket used by event source.")
@@ -79,20 +109,16 @@ def modify_kickoff(type, bucket_name, topic_name):
             yaml.dump(sls_config, outf, indent=1)
 
 @stac_updater.command(name='add-notifications', short_help="notifications on catalog update")
-@click.option('--topic_name', type=str, required=True, help="Name of SNS topic.")
-def add_notifications(topic_name):
-    # Remove all non-alphanumeric characters
-    pattern = re.compile('[\W_]+')
-    alphanumeric_name = pattern.sub('', topic_name)
+def add_notifications():
 
     with open(sls_config_path, 'r') as f:
         sls_config = yaml.unsafe_load(f)
         sls_config['resources']['Resources'].update({
-            alphanumeric_name: resources.sns_topic(topic_name)
+            notification_topic_name: resources.sns_topic(notification_topic_name)
         })
 
         sls_config['provider']['environment'].update({
-            'NOTIFICATION_TOPIC': topic_name
+            'NOTIFICATION_TOPIC': notification_topic_name
         })
 
         with open(sls_config_path, 'w') as outf:
@@ -124,13 +150,42 @@ def add_logging(es_host):
         with open(sls_config_path, 'w') as outf:
             yaml.dump(sls_config, outf, indent=1)
 
-
-
-
-
-@stac_updater.command(name='deploy', short_help="deploy service to aws")
+@stac_updater.command(name='deploy', short_help="deploy service to aws.")
 def deploy():
     subprocess.call("docker build . -t stac-updater:latest", shell=True)
     subprocess.call("docker run --rm -v $PWD:/home/stac_updater -it stac-updater:latest package-service.sh", shell=True)
     subprocess.call("npm install serverless-pseudo-parameters", shell=True)
     subprocess.call("sls deploy -v", shell=True)
+
+@stac_updater.command(name='info', short_help="prints information about your service.")
+def info():
+    info = {}
+    with open(sls_config_path, 'r') as f:
+        sls_config = yaml.unsafe_load(f)
+        static_updaters = [sls_config['functions'][x] for x in sls_config['functions'] if x.endswith('update_collection')]
+        if len(static_updaters) > 0:
+            info.update({
+                'static_collections': [{
+                    'root': x['environment']['COLLECTION_ROOT'],
+                    'path': x['environment']['PATH'],
+                    'filename': x['environment']['FILENAME'],
+                    'eventSource': list(x['events'])[0]
+                } for x in static_updaters]
+            })
+
+        if notification_topic_name in sls_config['resources']['Resources']:
+            info.update({
+                'notifications': {
+                    'topicArn': 'arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:' + notification_topic_name
+                }
+            })
+
+        if 'es_log_ingest' in sls_config['functions']:
+            info.update({
+                'logging': {
+                    'host': sls_config['functions']['es_log_ingest']['environment']['ES_HOST'],
+                    'logGroups': [x['cloudwatchLog']['logGroup'] for x in sls_config['functions']['es_log_ingest']['events']]
+                }
+            })
+
+    print(json.dumps(info, indent=1))
