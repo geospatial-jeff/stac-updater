@@ -150,6 +150,44 @@ def add_logging(es_host):
         with open(sls_config_path, 'w') as outf:
             yaml.dump(sls_config, outf, indent=1)
 
+@stac_updater.command(name='build-thumbnails', short_help="Generate thumbnails when ingesting items.")
+@click.option('--collection', '-c', type=str, multiple=True, help="Limit thumbnails to specific collections.")
+def build_thumbnails(collection):
+    # Deploy the stac-thumbnail service
+    # Subscribe notification SNS topic to stac-thumbnail SQS queue
+    queue_name = 'newThumbnailQueue'
+
+    with open(sls_config_path, 'r') as f:
+        sls_config = yaml.unsafe_load(f)
+
+        # Build notification topic if it doesn't already exist
+        if notification_topic_name not in sls_config['resources']['Resources']:
+            sls_config['resources']['Resources'].update({
+                notification_topic_name: resources.sns_topic(notification_topic_name)
+            })
+            sls_config['provider']['environment'].update({
+                'NOTIFICATION_TOPIC': notification_topic_name
+            })
+
+        # Create filter policies based on input collections
+        filter_policy = {"collection": collection} if len(collection) > 0 else None
+        subscription, policy = resources.subscribe_sqs_to_sns(queue_name, notification_topic_name, filter_policy)
+
+        # Use remote references instead of local (queue is defined in separate service).
+        policy['Properties']['PolicyDocument']['Statement'][0].update({
+            'Resource': "arn:aws:sqs:#{AWS::Region}:#{AWS::AccountId}:" + queue_name
+        })
+        policy['Properties']['Queues'][0] = 'https://sqs.#{AWS::Region}.amazonaws.com/#{AWS::AccountId}/' + queue_name
+        subscription['Properties'].update({'Endpoint': "arn:aws:sqs:#{AWS::Region}:#{AWS::AccountId}:" + queue_name})
+
+        sls_config['resources']['Resources'].update({
+            'thumbnailSnsSub': subscription,
+            'thumbnailSqsPolicy': policy,
+        })
+
+        with open(sls_config_path, 'w') as outf:
+            yaml.dump(sls_config, outf, indent=1)
+
 @stac_updater.command(name='deploy', short_help="deploy service to aws.")
 def deploy():
     subprocess.call("docker build . -t stac-updater:latest", shell=True)
