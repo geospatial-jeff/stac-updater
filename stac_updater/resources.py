@@ -119,24 +119,39 @@ def sns_topic(topic_name):
     }
     return resource
 
-def lambda_sqs_trigger(func_name, queue_name, catalog_root, concurrency):
+# def lambda_sqs_trigger(func_name, queue_name, catalog_root, concurrency):
+#     func = {
+#         "handler": f"stac_updater.handler.{func_name}",
+#         "environment": {
+#             'COLLECTION_ROOT': catalog_root
+#         },
+#         "events": [
+#             {
+#                 "sqs": {
+#                     "arn": "arn:aws:sqs:#{}:#{}:{}".format("{AWS::Region}",
+#                                                         "{AWS::AccountId}",
+#                                                         queue_name),
+#                 }
+#             }
+#         ],
+#         "reservedConcurrency": concurrency
+#     }
+#
+#     return func
+
+def lambda_sqs_trigger(func_name, queue_name):
     func = {
         "handler": f"stac_updater.handler.{func_name}",
-        "environment": {
-            'COLLECTION_ROOT': catalog_root
-        },
         "events": [
             {
                 "sqs": {
                     "arn": "arn:aws:sqs:#{}:#{}:{}".format("{AWS::Region}",
                                                         "{AWS::AccountId}",
-                                                        queue_name),
+                                                        queue_name)
                 }
             }
-        ],
-        "reservedConcurrency": concurrency
+        ]
     }
-
     return func
 
 def lambda_s3_trigger(func_name, bucket_name):
@@ -205,7 +220,14 @@ def update_collection(name, root, filter_rule, long_poll, concurrency, path, fil
     dlq = sqs_queue(dlq_name)
     queue = sqs_queue(queue_name, dlq_name=dlq_name, maxRetry=3, long_poll=long_poll)
     sns_subscription, sqs_policy = subscribe_sqs_to_sns(queue_name, 'newStacItemTopic', filter_rule)
-    lambda_updater = lambda_sqs_trigger(lambda_name, queue_name, root, concurrency)
+    lambda_updater = lambda_sqs_trigger(lambda_name, queue_name)
+
+    lambda_updater.update({
+        'environment': {
+            'COLLECTION_ROOT': root
+        },
+        "reservedConcurrency": concurrency
+    })
 
     if path:
         lambda_updater['environment'].update({
