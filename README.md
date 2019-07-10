@@ -19,7 +19,7 @@ stac-updater new-service
 # Build AWS resources to update collection
 stac-updater update-collection --root https://stac.com/landsat-8-l1/catalog.json \
                                --path {landsat:path}/{landsat:row} \
-                               --row  {date}/{id}
+                               --filename  {date}/{id}
 
 # Modify kickoff event source to s3:ObjectCreated
 stac-updater modify-kickoff --type s3 --bucket_name stac-updater-kickoff
