@@ -119,26 +119,6 @@ def sns_topic(topic_name):
     }
     return resource
 
-# def lambda_sqs_trigger(func_name, queue_name, catalog_root, concurrency):
-#     func = {
-#         "handler": f"stac_updater.handler.{func_name}",
-#         "environment": {
-#             'COLLECTION_ROOT': catalog_root
-#         },
-#         "events": [
-#             {
-#                 "sqs": {
-#                     "arn": "arn:aws:sqs:#{}:#{}:{}".format("{AWS::Region}",
-#                                                         "{AWS::AccountId}",
-#                                                         queue_name),
-#                 }
-#             }
-#         ],
-#         "reservedConcurrency": concurrency
-#     }
-#
-#     return func
-
 def lambda_sqs_trigger(func_name, queue_name):
     func = {
         "handler": f"stac_updater.handler.{func_name}",
