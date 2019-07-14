@@ -190,7 +190,7 @@ def lambda_invoke(func_name):
     }
     return func
 
-def update_collection(name, root, filter_rule, long_poll, concurrency, path, filename):
+def update_collection(name, root, filter_rule, long_poll, concurrency, timeout, path, filename):
     dlq_name = f"{name}Dlq"
     queue_name = f"{name}Queue"
     sns_sub_name = f"{name}SnsSub"
@@ -206,7 +206,8 @@ def update_collection(name, root, filter_rule, long_poll, concurrency, path, fil
         'environment': {
             'COLLECTION_ROOT': root
         },
-        "reservedConcurrency": concurrency
+        "reservedConcurrency": concurrency,
+        "timeout": timeout
     })
 
     if path:
