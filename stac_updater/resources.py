@@ -192,7 +192,7 @@ def lambda_invoke(func_name):
     }
     return func
 
-def update_collection(name, root, filter_rule, long_poll, concurrency, timeout, path, filename, backfill_extent):
+def update_collection(name, root, filter_rule, long_poll, concurrency, timeout, vis_timeout, path, filename, backfill_extent):
     dlq_name = f"{name}Dlq"[:45]
     queue_name = f"{name}Queue"[:45]
     sns_sub_name = f"{name}SnsSub"[:45]
@@ -200,7 +200,7 @@ def update_collection(name, root, filter_rule, long_poll, concurrency, timeout, 
     lambda_name = "update_collection"
 
     dlq = sqs_queue(dlq_name)
-    queue = sqs_queue(queue_name, dlq_name=dlq_name, maxRetry=3, long_poll=long_poll, timeout=60)
+    queue = sqs_queue(queue_name, dlq_name=dlq_name, maxRetry=3, long_poll=long_poll, timeout=vis_timeout)
     sns_subscription, sqs_policy = subscribe_sqs_to_sns(queue_name, 'newStacItemTopic', filter_rule)
     lambda_updater = lambda_sqs_trigger(lambda_name, queue_name)
 

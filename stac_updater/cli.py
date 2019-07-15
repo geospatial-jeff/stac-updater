@@ -27,10 +27,11 @@ def new_service():
 @click.option('--long-poll/--short-poll', default=False, help="Enable long polling.")
 @click.option('--concurrency', type=int, default=1, help="Sets lambda concurrency limit when polling the queue.")
 @click.option('--timeout', type=int, default=15, help="Sets lambda timeout.")
+@click.option('--visibility_timeout', type=int, default=60, help="Sets visibility timeout of messages consumed by the queue.")
 @click.option('--path', type=str, help="Pattern used by sat-stac to build sub-catalogs.")
 @click.option('--filename', type=str, help="Pattern used by sat-stac to build item name.")
 @click.option('--backfill_extent/--no_backfill', default=False, help="Enable backfilling of collection spatial/temporal extent.")
-def update_collection(root, long_poll, concurrency, timeout, path, filename, backfill_extent):
+def update_collection(root, long_poll, concurrency, timeout, visibility_timeout, path, filename, backfill_extent):
     # Create a SQS queue for the collection
     # Subscribe SQS queue to SNS topic with filter policy on collection name
     # Configure lambda function and attach to SQS queue (use ENV variables to pass state)
@@ -45,7 +46,7 @@ def update_collection(root, long_poll, concurrency, timeout, path, filename, bac
         # Using unsafe load to preserve type.
         sls_config = yaml.unsafe_load(f)
         aws_resources = resources.update_collection(name, root, filter_rule, long_poll, concurrency,
-                                                    timeout, path, filename, backfill_extent)
+                                                    timeout, visibility_timeout, path, filename, backfill_extent)
         sls_config['resources']['Resources'].update(aws_resources['resources'])
         sls_config['functions'].update(aws_resources['functions'])
 
