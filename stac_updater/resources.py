@@ -67,7 +67,6 @@ def subscribe_lambda_to_sns(lambda_arn, topic_name):
             "FunctionName": lambda_arn,
             "Principal": "sns.amazonaws.com",
             "SourceArn": {"Ref": topic_name},
-
         }
     }
 
@@ -85,7 +84,7 @@ def subscribe_lambda_to_sns(lambda_arn, topic_name):
     return subscription, lambda_policy
 
 
-def sqs_queue(queue_name, dlq_name=None, maxRetry=3, long_poll=False):
+def sqs_queue(queue_name, dlq_name=None, maxRetry=3, long_poll=False, timeout=None):
     resource = {
         "Type": "AWS::SQS::Queue",
         "Properties": {
@@ -107,6 +106,9 @@ def sqs_queue(queue_name, dlq_name=None, maxRetry=3, long_poll=False):
 
     if long_poll:
         resource['Properties'].update({'ReceiveMessageWaitTimeSeconds': 20})
+
+    if timeout:
+        resource['Properties'].update({'VisibilityTimeout': timeout})
 
     return resource
 
@@ -198,7 +200,7 @@ def update_collection(name, root, filter_rule, long_poll, concurrency, timeout, 
     lambda_name = "update_collection"
 
     dlq = sqs_queue(dlq_name)
-    queue = sqs_queue(queue_name, dlq_name=dlq_name, maxRetry=3, long_poll=long_poll)
+    queue = sqs_queue(queue_name, dlq_name=dlq_name, maxRetry=3, long_poll=long_poll, timeout=60)
     sns_subscription, sqs_policy = subscribe_sqs_to_sns(queue_name, 'newStacItemTopic', filter_rule)
     lambda_updater = lambda_sqs_trigger(lambda_name, queue_name)
 
