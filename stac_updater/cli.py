@@ -74,6 +74,7 @@ def update_dynamic_catalog(arn):
             'satApiIngestSubscription': sns_subscription,
             'satApiIngestPolicy': policy
         })
+        sns_subscription.update({'DependsOn': 'stacUpdaterNotifications'})
 
         with open(sls_config_path, 'w') as outf:
             yaml.dump(sls_config, outf, indent=1)
@@ -180,6 +181,7 @@ def build_thumbnails(collection):
         })
         policy['Properties']['Queues'][0] = 'https://sqs.#{AWS::Region}.amazonaws.com/#{AWS::AccountId}/' + queue_name
         subscription['Properties'].update({'Endpoint': "arn:aws:sqs:#{AWS::Region}:#{AWS::AccountId}:" + queue_name})
+        subscription.update({'DependsOn': 'stacUpdaterNotifications'})
 
         sls_config['resources']['Resources'].update({
             'thumbnailSnsSub': subscription,
