@@ -192,7 +192,7 @@ def lambda_invoke(func_name):
     }
     return func
 
-def update_collection(name, root, filter_rule, long_poll, concurrency, timeout, path, filename):
+def update_collection(name, root, filter_rule, long_poll, concurrency, timeout, path, filename, backfill_extent):
     dlq_name = f"{name}Dlq"
     queue_name = f"{name}Queue"
     sns_sub_name = f"{name}SnsSub"
@@ -220,6 +220,11 @@ def update_collection(name, root, filter_rule, long_poll, concurrency, timeout, 
     if filename:
         lambda_updater['environment'].update({
             'FILENAME': filename
+        })
+
+    if backfill_extent:
+        lambda_updater['environment'].update({
+            'BACKFILL_EXTENT': backfill_extent
         })
 
     return {
