@@ -153,8 +153,7 @@ def add_logging(es_host):
             yaml.dump(sls_config, outf, indent=1)
 
 @stac_updater.command(name='build-thumbnails', short_help="Generate thumbnails when ingesting items.")
-@click.option('--collection', '-c', type=str, multiple=True, help="Limit thumbnails to specific collections.")
-def build_thumbnails(collection):
+def build_thumbnails():
     # Deploy the stac-thumbnail service
     # Subscribe notification SNS topic to stac-thumbnail SQS queue
     queue_name = 'newThumbnailQueue'
@@ -172,8 +171,7 @@ def build_thumbnails(collection):
             })
 
         # Create filter policies based on input collections
-        filter_policy = {"collection": collection} if len(collection) > 0 else None
-        subscription, policy = resources.subscribe_sqs_to_sns(queue_name, notification_topic_name, filter_policy)
+        subscription, policy = resources.subscribe_sqs_to_sns(queue_name, notification_topic_name)
 
         # Use remote references instead of local (queue is defined in separate service).
         policy['Properties']['PolicyDocument']['Statement'][0].update({
