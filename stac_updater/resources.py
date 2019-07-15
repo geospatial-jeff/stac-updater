@@ -193,10 +193,10 @@ def lambda_invoke(func_name):
     return func
 
 def update_collection(name, root, filter_rule, long_poll, concurrency, timeout, path, filename, backfill_extent):
-    dlq_name = f"{name}Dlq"
-    queue_name = f"{name}Queue"
-    sns_sub_name = f"{name}SnsSub"
-    sqs_policy_name = f"{name}SqsPolicy"
+    dlq_name = f"{name}Dlq"[:45]
+    queue_name = f"{name}Queue"[:45]
+    sns_sub_name = f"{name}SnsSub"[:45]
+    sqs_policy_name = f"{name}SqsPolicy"[:45]
     lambda_name = "update_collection"
 
     dlq = sqs_queue(dlq_name)
@@ -235,6 +235,6 @@ def update_collection(name, root, filter_rule, long_poll, concurrency, timeout, 
             sqs_policy_name: sqs_policy
         },
         'functions': {
-            f"{name}_{lambda_name}": lambda_updater
+            f"{name}_{lambda_name}"[:45]: lambda_updater
         }
     }
