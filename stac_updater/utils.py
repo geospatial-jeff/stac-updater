@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 
 def stac_to_sns(stac_item):
@@ -36,3 +37,8 @@ def stac_to_sns(stac_item):
         "MessageAttributes": attributes
     }
 
+def load_datetime(date_str):
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+    except:
+        return datetime.strptime(date_str, "%Y-%m-%d")

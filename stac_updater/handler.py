@@ -2,6 +2,7 @@ import os
 import json
 import base64
 import gzip
+from datetime import datetime
 
 import boto3
 from satstac import Collection, Item
@@ -50,41 +51,69 @@ def kickoff(event, context):
     )
 
 def update_collection(event, context):
-    collection_root = os.getenv('COLLECTION_ROOT')
-    path = os.getenv('PATH')
-    filename = os.getenv('FILENAME')
+    try:
+        collection_root = os.getenv('COLLECTION_ROOT')
+        path = os.getenv('PATH')
+        filename = os.getenv('FILENAME')
+        backfill_extent = os.getenv('BACKFILL_EXTENT')
 
-    item_count = len(event['Records'])
-    stac_links = []
+        item_count = len(event['Records'])
+        stac_links = []
 
-    for record in event['Records']:
-        stac_item = json.loads(record['body'])
+        for record in event['Records']:
+            stac_item = json.loads(record['body'])
+            print(stac_item)
 
-        print(stac_item)
+            col = Collection.open(collection_root)
+            collection_name = col.id
+            kwargs = {'item': Item(stac_item)}
+            if path:
+                kwargs.update({'path': '$' + '/$'.join(path.split('/'))})
+            if filename:
+                kwargs.update({'filename': '$' + '/$'.join(filename.split('/'))})
 
-        col = Collection.open(collection_root)
-        collection_name = col.id
-        kwargs = {'item': Item(stac_item)}
-        if path:
-            kwargs.update({'path': '$' + '/$'.join(path.split('/'))})
-        if filename:
-            kwargs.update({'filename': '$' + '/$'.join(filename.split('/'))})
-        print(kwargs)
-        col.add_item(**kwargs)
-        col.save()
+            # Update spatial and temporal extent of collection
+            if backfill_extent:
+                if 'spatial' in col.data['extent']:
+                    if stac_item['bbox'][0] < col.data['extent']['spatial'][0]:
+                        col.data['extent']['spatial'][0] = stac_item['bbox'][0]
+                    if stac_item['bbox'][1] < col.data['extent']['spatial'][1]:
+                        col.data['extent']['spatial'][1] = stac_item['bbox'][1]
+                    if stac_item['bbox'][2] > col.data['extent']['spatial'][2]:
+                        col.data['extent']['spatial'][2] = stac_item['bbox'][2]
+                    if stac_item['bbox'][3] > col.data['extent']['spatial'][3]:
+                        col.data['extent']['spatial'][3] = stac_item['bbox'][3]
+                else:
+                    col.data['extent'].update({'spatial': stac_item['bbox']})
 
-        stac_links.append(kwargs['item'].links('self')[0])
+                if 'temporal' in col.data['extent']:
+                    item_dt = utils.load_datetime(stac_item['properties']['datetime'])
+                    min_dt = utils.load_datetime(col.data['extent']['temporal'][0])
+                    max_dt = utils.load_datetime(col.data['extent']['temporal'][1])
+                    if item_dt < min_dt:
+                        col.data['extent']['temporal'][0] = stac_item['properties']['datetime']
+                    if item_dt > max_dt:
+                        col.data['extent']['temporal'][1] = stac_item['properties']['datetime']
+                else:
+                    col.data['extent'].update({'temporal': [stac_item['properties']['datetime'], stac_item['properties']['datetime']]})
 
-        # Send message to SNS Topic if enabled
-        if NOTIFICATION_TOPIC:
-            kwargs = utils.stac_to_sns(kwargs['item'].data)
-            kwargs.update({
-                'TopicArn': f"arn:aws:sns:{REGION}:{ACCOUNT_ID}:{NOTIFICATION_TOPIC}"
-            })
-            sns_client.publish(**kwargs)
+            col.add_item(**kwargs)
+            col.save()
+
+            stac_links.append(kwargs['item'].links('self')[0])
+
+            # Send message to SNS Topic if enabled
+            if NOTIFICATION_TOPIC:
+                kwargs = utils.stac_to_sns(kwargs['item'].data)
+                kwargs.update({
+                    'TopicArn': f"arn:aws:sns:{REGION}:{ACCOUNT_ID}:{NOTIFICATION_TOPIC}"
+                })
+                sns_client.publish(**kwargs)
 
 
-    print(f"LOGS CollectionName: {collection_name}\tItemCount: {item_count}\tItemLinks: {stac_links}")
+        print(f"LOGS CollectionName: {collection_name}\tItemCount: {item_count}\tItemLinks: {stac_links}")
+    except:
+        raise
 
 
 def es_log_ingest(event, context):

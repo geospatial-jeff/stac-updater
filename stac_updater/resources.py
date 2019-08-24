@@ -67,7 +67,6 @@ def subscribe_lambda_to_sns(lambda_arn, topic_name):
             "FunctionName": lambda_arn,
             "Principal": "sns.amazonaws.com",
             "SourceArn": {"Ref": topic_name},
-
         }
     }
 
@@ -85,7 +84,7 @@ def subscribe_lambda_to_sns(lambda_arn, topic_name):
     return subscription, lambda_policy
 
 
-def sqs_queue(queue_name, dlq_name=None, maxRetry=3, long_poll=False):
+def sqs_queue(queue_name, dlq_name=None, maxRetry=3, long_poll=False, timeout=None):
     resource = {
         "Type": "AWS::SQS::Queue",
         "Properties": {
@@ -108,6 +107,9 @@ def sqs_queue(queue_name, dlq_name=None, maxRetry=3, long_poll=False):
     if long_poll:
         resource['Properties'].update({'ReceiveMessageWaitTimeSeconds': 20})
 
+    if timeout:
+        resource['Properties'].update({'VisibilityTimeout': timeout})
+
     return resource
 
 def sns_topic(topic_name):
@@ -119,24 +121,19 @@ def sns_topic(topic_name):
     }
     return resource
 
-def lambda_sqs_trigger(func_name, queue_name, catalog_root, concurrency):
+def lambda_sqs_trigger(func_name, queue_name):
     func = {
         "handler": f"stac_updater.handler.{func_name}",
-        "environment": {
-            'COLLECTION_ROOT': catalog_root
-        },
         "events": [
             {
                 "sqs": {
                     "arn": "arn:aws:sqs:#{}:#{}:{}".format("{AWS::Region}",
                                                         "{AWS::AccountId}",
-                                                        queue_name),
+                                                        queue_name)
                 }
             }
-        ],
-        "reservedConcurrency": concurrency
+        ]
     }
-
     return func
 
 def lambda_s3_trigger(func_name, bucket_name):
@@ -195,17 +192,25 @@ def lambda_invoke(func_name):
     }
     return func
 
-def update_collection(name, root, filter_rule, long_poll, concurrency, path, filename):
-    dlq_name = f"{name}Dlq"
-    queue_name = f"{name}Queue"
-    sns_sub_name = f"{name}SnsSub"
-    sqs_policy_name = f"{name}SqsPolicy"
+def update_collection(name, root, filter_rule, long_poll, concurrency, timeout, vis_timeout, path, filename, backfill_extent):
+    dlq_name = f"{name}Dlq"[:43]
+    queue_name = f"{name}Queue"[:43]
+    sns_sub_name = f"{name}SnsSub"[:43]
+    sqs_policy_name = f"{name}SqsPolicy"[:43]
     lambda_name = "update_collection"
 
     dlq = sqs_queue(dlq_name)
-    queue = sqs_queue(queue_name, dlq_name=dlq_name, maxRetry=3, long_poll=long_poll)
+    queue = sqs_queue(queue_name, dlq_name=dlq_name, maxRetry=3, long_poll=long_poll, timeout=vis_timeout)
     sns_subscription, sqs_policy = subscribe_sqs_to_sns(queue_name, 'newStacItemTopic', filter_rule)
-    lambda_updater = lambda_sqs_trigger(lambda_name, queue_name, root, concurrency)
+    lambda_updater = lambda_sqs_trigger(lambda_name, queue_name)
+
+    lambda_updater.update({
+        'environment': {
+            'COLLECTION_ROOT': root
+        },
+        "reservedConcurrency": concurrency,
+        "timeout": timeout
+    })
 
     if path:
         lambda_updater['environment'].update({
@@ -217,6 +222,11 @@ def update_collection(name, root, filter_rule, long_poll, concurrency, path, fil
             'FILENAME': filename
         })
 
+    if backfill_extent:
+        lambda_updater['environment'].update({
+            'BACKFILL_EXTENT': backfill_extent
+        })
+
     return {
         'resources': {
             dlq_name: dlq,
@@ -225,6 +235,6 @@ def update_collection(name, root, filter_rule, long_poll, concurrency, path, fil
             sqs_policy_name: sqs_policy
         },
         'functions': {
-            f"{name}_{lambda_name}": lambda_updater
+            f"{name}_{lambda_name}"[:45]: lambda_updater
         }
     }

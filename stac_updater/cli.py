@@ -26,9 +26,12 @@ def new_service():
 @click.option('--root', '-r', type=str, required=True, help="URL of collection.")
 @click.option('--long-poll/--short-poll', default=False, help="Enable long polling.")
 @click.option('--concurrency', type=int, default=1, help="Sets lambda concurrency limit when polling the queue.")
+@click.option('--timeout', type=int, default=15, help="Sets lambda timeout.")
+@click.option('--visibility_timeout', type=int, default=60, help="Sets visibility timeout of messages consumed by the queue.")
 @click.option('--path', type=str, help="Pattern used by sat-stac to build sub-catalogs.")
 @click.option('--filename', type=str, help="Pattern used by sat-stac to build item name.")
-def update_collection(root, long_poll, concurrency, path, filename):
+@click.option('--backfill_extent/--no_backfill', default=False, help="Enable backfilling of collection spatial/temporal extent.")
+def update_collection(root, long_poll, concurrency, timeout, visibility_timeout, path, filename, backfill_extent):
     # Create a SQS queue for the collection
     # Subscribe SQS queue to SNS topic with filter policy on collection name
     # Configure lambda function and attach to SQS queue (use ENV variables to pass state)
@@ -42,8 +45,8 @@ def update_collection(root, long_poll, concurrency, path, filename):
     with open(sls_config_path, 'r') as f:
         # Using unsafe load to preserve type.
         sls_config = yaml.unsafe_load(f)
-
-        aws_resources = resources.update_collection(name, root, filter_rule, long_poll, concurrency, path, filename)
+        aws_resources = resources.update_collection(name, root, filter_rule, long_poll, concurrency,
+                                                    timeout, visibility_timeout, path, filename, backfill_extent)
         sls_config['resources']['Resources'].update(aws_resources['resources'])
         sls_config['functions'].update(aws_resources['functions'])
 
@@ -73,6 +76,7 @@ def update_dynamic_catalog(arn):
             'satApiIngestSubscription': sns_subscription,
             'satApiIngestPolicy': policy
         })
+        sns_subscription.update({'DependsOn': 'stacUpdaterNotifications'})
 
         with open(sls_config_path, 'w') as outf:
             yaml.dump(sls_config, outf, indent=1)
@@ -146,6 +150,43 @@ def add_logging(es_host):
             sls_config['provider']['iamRoleStatements'][0]['Action'].append('es:*')
         if 'arn:aws:es:*' not in sls_config['provider']['iamRoleStatements'][0]['Resource']:
             sls_config['provider']['iamRoleStatements'][0]['Resource'].append('arn:aws:ecs:*')
+
+        with open(sls_config_path, 'w') as outf:
+            yaml.dump(sls_config, outf, indent=1)
+
+@stac_updater.command(name='build-thumbnails', short_help="Generate thumbnails when ingesting items.")
+def build_thumbnails():
+    # Deploy the stac-thumbnail service
+    # Subscribe notification SNS topic to stac-thumbnail SQS queue
+    queue_name = 'newThumbnailQueue'
+
+    with open(sls_config_path, 'r') as f:
+        sls_config = yaml.unsafe_load(f)
+
+        # Build notification topic if it doesn't already exist
+        if notification_topic_name not in sls_config['resources']['Resources']:
+            sls_config['resources']['Resources'].update({
+                notification_topic_name: resources.sns_topic(notification_topic_name)
+            })
+            sls_config['provider']['environment'].update({
+                'NOTIFICATION_TOPIC': notification_topic_name
+            })
+
+        # Create filter policies based on input collections
+        subscription, policy = resources.subscribe_sqs_to_sns(queue_name, notification_topic_name)
+
+        # Use remote references instead of local (queue is defined in separate service).
+        policy['Properties']['PolicyDocument']['Statement'][0].update({
+            'Resource': "arn:aws:sqs:#{AWS::Region}:#{AWS::AccountId}:" + queue_name
+        })
+        policy['Properties']['Queues'][0] = 'https://sqs.#{AWS::Region}.amazonaws.com/#{AWS::AccountId}/' + queue_name
+        subscription['Properties'].update({'Endpoint': "arn:aws:sqs:#{AWS::Region}:#{AWS::AccountId}:" + queue_name})
+        subscription.update({'DependsOn': 'stacUpdaterNotifications'})
+
+        sls_config['resources']['Resources'].update({
+            'thumbnailSnsSub': subscription,
+            'thumbnailSqsPolicy': policy,
+        })
 
         with open(sls_config_path, 'w') as outf:
             yaml.dump(sls_config, outf, indent=1)

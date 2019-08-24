@@ -19,7 +19,7 @@ stac-updater new-service
 # Build AWS resources to update collection
 stac-updater update-collection --root https://stac.com/landsat-8-l1/catalog.json \
                                --path {landsat:path}/{landsat:row} \
-                               --row  {date}/{id}
+                               --filename  {date}/{id}
 
 # Modify kickoff event source to s3:ObjectCreated
 stac-updater modify-kickoff --type s3 --bucket_name stac-updater-kickoff
@@ -88,7 +88,7 @@ It took 86 total invocations to process the 200 STAC Items.
 ![es-logging-2](docs/images/es-logging-summary.png)
 
 ## Update Dynamic Catalog
-STAC Items which are successfully ingested into a static collection may also by ingested into a deployed instance of [sat-api](https://github.com/sat-utils/sat-api).
+STAC Items which are successfully ingested into a static collection may also by ingested into a deployed instance of [sat-api](https://github.com/sat-utils/sat-api)28.
 
 ```
 stac-updater update-dynamic-collection --arn arn:aws:lambda:<region>:<accountid>:function:sat-api-ingest
@@ -96,7 +96,20 @@ stac-updater update-dynamic-collection --arn arn:aws:lambda:<region>:<accountid>
 
 ![update-sat-api](docs/images/update-sat-api.png)
 
+## Thumbnails
+You may backfill thumbnails as items are inserted into the STAC catalog using a deployed instance of [stac-thumbnails](https://github.com/geospatial-jeff/stac-thumbnails).
 
+```
+stac-updater build-thumbnails
+```
+
+![update-sat-api](docs/images/build-thumbnails.png)
+
+This plugin is currently designed for a specific use-case and expects the following conditions:
+- The underlying asset is referenced at `stac_item['assets']['data']['href']`.
+- The underlying asset is a three band image (RGB).
+
+More generic support for thumbnails will be added at a later date if there is interest.  
 
 # TODOS
 - Add support for [staccato](https://github.com/boundlessgeo/staccato).
